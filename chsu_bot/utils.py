@@ -37,13 +37,23 @@ def render(json_response: List[dict]) -> str:
         return "Расписание не найдено"
 
 
-async def date_is_valid(date: str) -> bool:
+def date_is_valid(date: List[str]) -> bool:
     for elem in date:
         try:
             datetime.datetime.strptime(elem, "%d.%m.%Y")
         except ValueError:
             return False
+    if len(date) == 2:
+        start_date = datetime.datetime.strptime(date[0], "%d.%m.%Y")
+        end_date = datetime.datetime.strptime(date[1], "%d.%m.%Y")
+        return start_date <= end_date
     return True
+
+
+def valid_range_length(start_date: str, end_date: str) -> bool:
+    start_date = datetime.datetime.strptime(start_date, "%d.%m.%Y")
+    end_date = datetime.datetime.strptime(end_date, "%d.%m.%Y")
+    return (end_date - start_date).days <= 31
 
 
 def get_week_day(date: str):

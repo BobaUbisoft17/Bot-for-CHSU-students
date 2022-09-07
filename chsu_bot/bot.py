@@ -31,7 +31,10 @@ from keyboard import (
     create_kb_first_pt,
     create_kb_second_pt,
 )
-from utils import date_is_valid
+from utils import (
+    date_is_valid,
+    valid_range_length
+)
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=os.getenv("BOTTOKEN"))
@@ -229,37 +232,47 @@ async def an_date(message: types.Message, state: FSMContext):
             text="Выберите дату",
             reply_markup=kb_schedule
         )
-    elif await date_is_valid(message.text.split("-")):
+    elif date_is_valid(message.text.split("-")):
         if len(message.text.split("-")) == 2:
             start_date, end_date = message.text.split("-")
         else:
             start_date, end_date = message.text, None
-        if await check_user_group(message.from_user.id):
-            group_id = await get_user_group(message.from_user.id)
-            await state.finish()
-            try:
-                await message.answer(
-                    text=await get_schedule(
-                        group_id=group_id,
-                        start_date=start_date,
-                        end_date=end_date
-                    ),
-                    reply_markup=kb_schedule
-                )
-            except MessageIsTooLong:
-                await Another_date.date.set()
-                await message.answer(
-                    text=("Вы ввели выбрали слишком большой диапазон" 
-                          "Попробуйте ещё раз только с меньшим диапозоном"),
-                    reply_markup=back_button
+        if end_date is None or valid_range_length(start_date, end_date):
+            if await check_user_group(message.from_user.id):
+                group_id = await get_user_group(message.from_user.id)
+                await state.finish()
+                try:
+                    await message.answer(
+                        text=await get_schedule(
+                            group_id=group_id,
+                            start_date=start_date,
+                            end_date=end_date
+                        ),
+                        reply_markup=kb_schedule
+                    )
+                except MessageIsTooLong:
+                    await Another_date.date.set()
+                    await message.answer(
+                        text=("Вы ввели выбрали слишком большой диапазон" 
+                            "Попробуйте ещё раз только с меньшим диапозоном"),
+                        reply_markup=back_button
+                    )
+            else:
+                async with state.proxy() as data:
+                    data["start_date"], data["end_date"] = start_date, end_date
+                await Another_date.next()
+                await message.reply(
+                    text="Введите название вашей группы",
+                    reply_markup=await create_kb_first_pt()
                 )
         else:
-            async with state.proxy() as data:
-                data["start_date"], data["end_date"] = start_date, end_date
-            await Another_date.next()
-            await message.reply(
-                text="Введите название вашей группы",
-                reply_markup=await create_kb_first_pt()
+            await Another_date.date.set()
+            await message.answer(
+                text=(
+                    "Вы ввели слишком большой диапазон\n"
+                    "Длина диапазоа не должена превышать 31 день"
+                ),
+                reply_markup=back_button
             )
     else:
         await Another_date.date.set()
