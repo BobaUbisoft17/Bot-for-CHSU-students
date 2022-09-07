@@ -64,6 +64,8 @@ async def send_welcome(message: types.Message):
 
 @dp.message_handler(TextFilter(equals="Узнать расписание"))
 async def get_date(message: types.Message):
+    if not await check_user_id(message.from_user.id):
+        await add_user_id(message.from_user.id)
     await message.answer("Выберите дату", reply_markup=kb_schedule)
 
 
@@ -125,6 +127,8 @@ async def get_group(message: types.Message, state: FSMContext):
 
 @dp.message_handler(TextFilter(equals="Настройки"))
 async def settings(message: types.Message):
+    if not await check_user_id(message.from_user.id):
+        await add_user_id(message.from_user.id)
     if await check_user_group(message.from_user.id):
         keyboard = kb_change_group
     else:

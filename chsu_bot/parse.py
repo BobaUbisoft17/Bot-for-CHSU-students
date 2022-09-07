@@ -28,4 +28,4 @@ async def get_schedule(group_id: int, start_date: str, end_date=None) -> List[di
     await set_token()
     async with aiohttp.ClientSession() as session:
         async with session.get(url=URL+body_request, headers=HEADERS) as resp:
-            return await render(await resp.json())
+            return render(await resp.json())
