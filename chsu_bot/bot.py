@@ -376,8 +376,7 @@ async def choose_end_day(callback: types.CallbackQuery, state: FSMContext):
                         await callback.message.answer(text=schedules[i], parse_mode="Markdown")
                     await callback.message.answer(text=schedules[-1], reply_markup=kb_schedule, parse_mode="Markdown")
                 else:
-                    async with state.proxy() as data:
-                        data["end_date"] = end_date
+                    data["end_date"] = end_date
                     await Another_range.next()
                     await bot.delete_message(callback.from_user.id, callback.message.message_id)
                     await callback.message.answer(
@@ -404,8 +403,6 @@ async def choose_group(message: types.Message, state: FSMContext):
     elif await check_group_name(message.text):
         group_id = await get_group_id(message.text)
         async with state.proxy() as data:
-            if not valid_date(data["start_date"], data["end_date"]):
-                data["start_date"], data["end_date"] = data["end_date"], data["start_date"]
             schedules = await get_schedule(group_id, data["start_date"], data["end_date"])
             await state.finish()
             for i in range(len(schedules) - 1):
@@ -444,13 +441,14 @@ async def send_help(message: types.Message):
 async def change_month(callback: types.CallbackQuery):
     """Смена месяца на клавиатуре-календаре."""
     month, year = map(int, callback.data.split()[1].split("."))
+    calendar = CalendarMarkup(month, year)
     if "next" in callback.data:
         await callback.message.edit_reply_markup(
-            reply_markup=CalendarMarkup.next_month(month, year).kb
+            reply_markup=calendar.next_month().kb
         )
     else:
         await callback.message.edit_reply_markup(
-            reply_markup=CalendarMarkup.previous_month(month, year).kb
+            reply_markup=calendar.previous_month().kb
         )
 
 
