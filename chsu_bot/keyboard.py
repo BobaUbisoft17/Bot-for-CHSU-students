@@ -194,6 +194,9 @@ class CalendarMarkup:
                 text="<", callback_data=f"back {self.month}.{self.year}"
             ),
             InlineKeyboardButton(
+                text="Меню", callback_data="menu"
+            ),
+            InlineKeyboardButton(
                 text=">", callback_data=f"next {self.month}.{self.year}"
             ),
         ]

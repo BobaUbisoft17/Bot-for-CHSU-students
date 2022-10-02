@@ -1,6 +1,7 @@
 """Модуль для работы с Telegram."""
 
 import datetime
+from email import message
 import logging
 
 import asyncio
@@ -87,7 +88,10 @@ async def get_date(message: types.Message):
     """Переводит пользователя в меню выбора даты получения расписания."""
     if not await check_user_id(message.from_user.id):
         await add_user_id(message.from_user.id)
-    await message.answer("Выберите дату", reply_markup=kb_schedule)
+    await message.answer(
+        "Выберите на какую дату хотите получить расписание",
+        reply_markup=kb_schedule
+    )
 
 
 @dp.message_handler(TextFilter(equals=["На сегодня", "На завтра"]))
@@ -259,6 +263,7 @@ async def choice_another_day(message: types.Message):
     
     Возвращает клавиатуру-календарь.
     """
+
     await Another_day.date.set()
     current_date = datetime.datetime.now()
     current_month = current_date.month
@@ -296,6 +301,13 @@ async def choose_another_day(callback: types.CallbackQuery, state: FSMContext):
             )
     elif "next" in callback.data or "back" in callback.data:
         await change_month(callback)
+    elif "menu" in callback.data:
+        await bot.delete_message(callback.from_user.id, callback.message.message_id)
+        await state.finish()
+        await callback.message.answer(
+            text="Выберите на какую дату хотите получить расписание",
+            reply_markup=kb_schedule
+        )
 
 
 @dp.message_handler(state=Another_day.group)
@@ -356,6 +368,13 @@ async def choose_start_day(callback: types.CallbackQuery, state: FSMContext):
         )
     elif "next" in callback.data or "back" in callback.data:
         await change_month(callback)
+    elif "menu" in callback.data:
+        await bot.delete_message(callback.from_user.id, callback.message.message_id)
+        await state.finish()
+        await callback.message.answer(
+            text="Выберите на какую дату хотите получить расписание",
+            reply_markup=kb_schedule
+        )
 
 
 @dp.callback_query_handler(state=Another_range.end_date)
@@ -392,6 +411,13 @@ async def choose_end_day(callback: types.CallbackQuery, state: FSMContext):
                 )
     elif "next" in callback.data or "back" in callback.data:
         await change_month(callback)
+    elif "menu" in callback.data:
+        await bot.delete_message(callback.from_user.id, callback.message.message_id)
+        await state.finish()
+        await callback.message.answer(
+            text="Выберите на какую дату хотите получить расписание",
+            reply_markup=kb_schedule
+        )
 
 
 @dp.message_handler(state=Another_range.group)
