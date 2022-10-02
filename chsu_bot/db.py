@@ -1,6 +1,6 @@
 """Модуль для работы с БД."""
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 import aiosqlite
 
 
@@ -93,11 +93,11 @@ async def check_user_group(user_id: int) -> bool:
                 return True
 
 
-async def change_user_group(user_id: int, group: str | int) -> None:
+async def change_user_group(user_id: int, group: Optional[str] = None) -> None:
     async with aiosqlite.connect("chsuBot.db") as db:
         async with db.cursor() as cursor:
-            if group == 0:
-                group_id = group
+            if group == None:
+                group_id = 0
             else:
                 group_id = await get_group_id(group)
             await cursor.execute(f"UPDATE users SET groupId={group_id} WHERE userId={user_id}")

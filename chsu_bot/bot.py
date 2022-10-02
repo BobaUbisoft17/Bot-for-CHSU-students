@@ -251,7 +251,7 @@ async def get_group_name(message: types.Message, state: FSMContext):
 async def delete_user_group(message: types.Message):
     """Удаление данных о группе пользователя."""
     if await check_user_group(message.from_user.id):
-        await change_user_group(user_id=message.from_user.id, group=0)
+        await change_user_group(user_id=message.from_user.id)
         await message.answer(
             text="Все данные о вашей группе удалены", reply_markup=kb_greeting
         )
