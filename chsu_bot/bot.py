@@ -64,7 +64,7 @@ class Another_day(StatesGroup):
 
 
 class Another_range(StatesGroup):
-    """Класс для запоминания дат при выборе диапозона дат."""
+    """Класс для запоминания дат при выборе диапазона дат."""
 
     start_date = State()
     end_date = State()
@@ -162,7 +162,7 @@ async def get_group(message: types.Message, state: FSMContext):
         await state.finish()
     else:
         await Get_schedule.group.set()
-        await message.reply("Такой группы нет\nПроверьте введённые данные")
+        await message.reply("Такой группы нет.\nПроверьте введённые данные")
 
 
 @dp.message_handler(TextFilter(equals="Настройки"))
@@ -229,7 +229,7 @@ async def get_group_name(message: types.Message, state: FSMContext):
             )
             await state.finish()
             await message.answer(
-                text="Я Вас запомнил\nТеперь вам не придёться выбирать группу",
+                text="Я Вас запомнил.\nТеперь вам не придёться выбирать группу",
                 reply_markup=kb_greeting,
             )
         else:
@@ -240,7 +240,7 @@ async def get_group_name(message: types.Message, state: FSMContext):
             )
     else:
         await Memory_group.group_name.set()
-        await message.reply("Такой группы нет\nПроверьте название и попробуйте ещё раз")
+        await message.reply("Такой группы нет.\nПроверьте название и попробуйте ещё раз")
 
 
 @dp.message_handler(TextFilter(equals="Удалить данные о группе"))
@@ -271,7 +271,7 @@ async def choice_another_day(message: types.Message):
 
 @dp.callback_query_handler(state=Another_day.date)
 async def choose_another_day(callback: types.CallbackQuery, state: FSMContext):
-    """Получение даты с календаря.
+    """Получение даты из календаря.
     
     Если группа пользователя в БД, возвращаем расписание.
     В ином случае: запоминаем дату и запускаем состояние
@@ -323,26 +323,26 @@ async def choose_group(message: types.Message, state: FSMContext):
     else:
         await Another_day.group.set()
         await message.answer(
-            text="Такой группы нет\nПопробуйте ещё раз",
+            text="Такой группы нет.\nПопробуйте ещё раз",
         )
 
 
 @dp.message_handler(TextFilter(equals="Выбрать диапозон"))
 async def choose_range(message: types.Message):
-    """Переводит пользователя в меню выбора диапозона."""
+    """Переводит пользователя в меню выбора диапазона."""
     await Another_range.start_date.set()
     current_date = datetime.datetime.now()
     current_month = current_date.month
     current_year = current_date.year
     await message.answer(
-        text="Выберите первый день диапозона:",
+        text="Выберите первый день диапазона:",
         reply_markup=CalendarMarkup(current_month, current_year).build.kb,
     )
 
 
 @dp.callback_query_handler(state=Another_range.start_date)
 async def choose_start_day(callback: types.CallbackQuery, state: FSMContext):
-    """Получение первого дня диапозона."""
+    """Получение первого дня диапазона."""
     if "date" in callback.data:
         start_date = formated_date(callback.data.split()[1])
         async with state.proxy() as data:
@@ -350,7 +350,7 @@ async def choose_start_day(callback: types.CallbackQuery, state: FSMContext):
         await Another_range.next()
         await callback.message.answer(
             text=(
-                "Выберите последний день диапозона "
+                "Выберите последний день диапазона "
                 "(выберите день на клавиатуре сверху):"
             )
         )
@@ -360,7 +360,7 @@ async def choose_start_day(callback: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query_handler(state=Another_range.end_date)
 async def choose_end_day(callback: types.CallbackQuery, state: FSMContext):
-    """Получение последнего дня диапозона."""
+    """Получение последнего дня диапазона."""
     if "date" in callback.data:
         end_date = formated_date(callback.data.split()[1])
         async with state.proxy() as data:
@@ -385,8 +385,8 @@ async def choose_end_day(callback: types.CallbackQuery, state: FSMContext):
                     )
             else:
                 await callback.message.answer(text=(
-                    "Вы ввели слишком большой диапозон. "
-                    "Максимальная длина диапозона "
+                    "Вы ввели слишком большой диапазон. "
+                    "Максимальная длина диапазона "
                     "не должна превышать 31 дня. "
                     "(Выберите другой день на клавиатуре)")
                 )
@@ -421,7 +421,7 @@ async def choose_group(message: types.Message, state: FSMContext):
     else:
         await Another_range.group.set()
         await message.answer(
-            text="Такой группы нет\nПопробуйте ещё раз",
+            text="Такой группы нет.\nПопробуйте ещё раз",
         )
 
 
@@ -453,12 +453,12 @@ async def change_month(callback: types.CallbackQuery):
 
 
 async def change_day(message: types.Message):
-    """Позволяет изменить последний день в диапозоне."""
+    """Позволяет изменить последний день в диапазоне."""
     current_date = datetime.datetime.now()
     month = current_date.month
     year = current_date.year
     await message.answer(
-        text="Выберите последний день диапозона",
+        text="Выберите последний день диапазона",
         reply_markup=CalendarMarkup(month, year).build.kb
     )
 
