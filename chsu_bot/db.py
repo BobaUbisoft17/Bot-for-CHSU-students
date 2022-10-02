@@ -1,3 +1,5 @@
+"""Модуль для работы с БД."""
+
 from typing import List, Tuple
 import aiosqlite
 

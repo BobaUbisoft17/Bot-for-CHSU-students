@@ -1,3 +1,5 @@
+"""Модуль для работы с Telegram."""
+
 import datetime
 import logging
 
@@ -8,7 +10,6 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text as TextFilter
 from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.utils.exceptions import MessageIsTooLong
 from db import (
     change_user_group,
     check_user_group,
@@ -23,16 +24,17 @@ from db import (
 from parse import get_schedule, get_groups_ids
 from keyboard import (
     HELP,
-    back_button,
     kb_greeting,
     kb_schedule,
     kb_change_group,
     kb_memory_group,
-    create_kb_first_pt,
-    create_kb_second_pt,
+    first_pt_groups,
+    second_pt_groups,
+    CalendarMarkup
 )
 from utils import (
-    date_is_valid,
+    valid_date,
+    formated_date,
     valid_range_length
 )
 
@@ -42,21 +44,36 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 
 
 class Get_schedule(StatesGroup):
+    """Класс для запоминания дня при выборе расписания на сегодня/завтра."""
+
     date = State()
     group = State()
 
 
 class Memory_group(StatesGroup):
+    """Класс для запоминания группы пользователя."""
+
     group_name = State()
 
 
-class Another_date(StatesGroup):
+class Another_day(StatesGroup):
+    """Класс для запоминания дня при выборе расписания на 'другой день'."""
+
     date = State()
+    group = State()
+
+
+class Another_range(StatesGroup):
+    """Класс для запоминания дат при выборе диапозона дат."""
+
+    start_date = State()
+    end_date = State()
     group = State()
 
 
 @dp.message_handler(commands="start")
 async def send_welcome(message: types.Message):
+    """Приветствует пользователя и переводит в главное меню."""
     if not (await check_user_id(message.from_user.id)):
         await add_user_id(message.from_user.id)
     await message.answer(
@@ -67,13 +84,20 @@ async def send_welcome(message: types.Message):
 
 @dp.message_handler(TextFilter(equals="Узнать расписание"))
 async def get_date(message: types.Message):
+    """Переводит пользователя в меню выбора даты получения расписания."""
     if not await check_user_id(message.from_user.id):
         await add_user_id(message.from_user.id)
     await message.answer("Выберите дату", reply_markup=kb_schedule)
 
 
 @dp.message_handler(TextFilter(equals=["На сегодня", "На завтра"]))
-async def get_date(message: types.Message, state: FSMContext):
+async def get_td_tm_schedule(message: types.Message, state: FSMContext):
+    """Получение расписания на сегодня/завтра.
+    
+    Если группа пользователя есть в БД, выводит расписание.
+    В ином случае запускает машину состояний и ждёт группу
+    пользователя.
+    """
     if message.text == "На сегодня":
         date = datetime.datetime.now().strftime("%d.%m.%Y")
     else:
@@ -83,12 +107,11 @@ async def get_date(message: types.Message, state: FSMContext):
 
     if await check_user_group(message.from_user.id):
         group_id = await get_user_group(message.from_user.id)
+        schedule = (await get_schedule(group_id, date))[0]
         await message.answer(
-            text=await get_schedule(
-                group_id=group_id,
-                start_date=date,
-            ),
+            text=schedule,
             reply_markup=kb_schedule,
+            parse_mode="Markdown"
         )
     else:
         async with state.proxy() as data:
@@ -96,31 +119,45 @@ async def get_date(message: types.Message, state: FSMContext):
 
         await Get_schedule.group.set()
         await message.reply(
-            "Введите название группы", reply_markup=(await create_kb_first_pt())
+            "Введите название группы", reply_markup=(await first_pt_groups())
         )
 
 
 @dp.message_handler(state=Get_schedule.group)
 async def get_group(message: types.Message, state: FSMContext):
+    """Получение группы пользователя.
+    
+    Если группа валидна, то возвращает расписание.
+    Если используются другие кнопки на клавиатуре,
+    то выплняет их.
+    В ином случае перезапускает состояние.
+    """
     if message.text == "Назад":
         await state.finish()
         await message.answer(text="Выберите дату", reply_markup=kb_schedule)
     elif message.text == "Дальше »":
         await message.answer(
             text="Меняем клавиатуру...",
-            reply_markup=await create_kb_second_pt()
+            reply_markup=await second_pt_groups()
         )
     elif message.text == "« Обратно":
         await message.answer(
             text="Возвращаем клавиатуру...",
-            reply_markup=await create_kb_first_pt()
+            reply_markup=await first_pt_groups()
         )
     elif await check_group_name(message.text):
         group_id = await get_group_id(message.text)
         async with state.proxy() as data:
+            schedule = (
+                await get_schedule(
+                    group_id=group_id,
+                    start_date=data["date"]
+                    )
+                )[0]
             await message.answer(
-                text=await get_schedule(group_id=group_id, start_date=data["date"]),
+                text=schedule,
                 reply_markup=kb_schedule,
+                parse_mode="Markdown"
             )
         await state.finish()
     else:
@@ -130,6 +167,7 @@ async def get_group(message: types.Message, state: FSMContext):
 
 @dp.message_handler(TextFilter(equals="Настройки"))
 async def settings(message: types.Message):
+    """Переводит пользователя в меню настроек."""
     if not await check_user_id(message.from_user.id):
         await add_user_id(message.from_user.id)
     if await check_user_group(message.from_user.id):
@@ -142,21 +180,23 @@ async def settings(message: types.Message):
 
 @dp.message_handler(TextFilter(equals="Запомнить группу"))
 async def change_group(message: types.Message):
+    """Запускает состояние для запоминания группы."""
     if await check_user_group(message.from_user.id):
         await message.reply(text="Не ломайте меня, пожалуйста🙏")
     else:
         await Memory_group.group_name.set()
         await message.answer(
-            "Введите название группы", reply_markup=(await create_kb_first_pt())
+            "Введите название группы", reply_markup=(await first_pt_groups())
         )
 
 
 @dp.message_handler(TextFilter(equals="Изменить группу"))
 async def change_group(message: types.Message):
+    """Изменение группы пользователя."""
     if await check_user_group(message.from_user.id):
         await Memory_group.group_name.set()
         await message.answer(
-            text="Введите название группы", reply_markup=(await create_kb_first_pt())
+            text="Введите название группы", reply_markup=(await first_pt_groups())
         )
     else:
         await message.reply(text="Не ломайте меня, пожалуйста🙏")
@@ -164,6 +204,7 @@ async def change_group(message: types.Message):
 
 @dp.message_handler(state=Memory_group.group_name)
 async def get_group_name(message: types.Message, state: FSMContext):
+    """Сосотояние для запоминания группы пользователя."""
     if message.text == "Назад":
         await state.finish()
         await message.answer(
@@ -173,12 +214,12 @@ async def get_group_name(message: types.Message, state: FSMContext):
     elif message.text == "Дальше »":
         await message.answer(
             text="Меняем клавиатуру...",
-            reply_markup=await create_kb_second_pt()
+            reply_markup=await second_pt_groups()
         )
     elif message.text == "« Обратно":
         await message.answer(
             text="Возвращаем клавиатуру...",
-            reply_markup=await create_kb_first_pt()
+            reply_markup=await first_pt_groups()
         )
     elif await check_group_name(message.text):
         if await get_user_group(message.from_user.id) != await get_group_id(message.text):
@@ -195,7 +236,7 @@ async def get_group_name(message: types.Message, state: FSMContext):
             await Memory_group.group_name.set()
             await message.answer(
                 text="Эта группа уже выбрана вами",
-                reply_markup=await create_kb_first_pt()
+                reply_markup=await first_pt_groups()
             )
     else:
         await Memory_group.group_name.set()
@@ -204,6 +245,7 @@ async def get_group_name(message: types.Message, state: FSMContext):
 
 @dp.message_handler(TextFilter(equals="Удалить данные о группе"))
 async def delete_user_group(message: types.Message):
+    """Удаление данных о группе пользователя."""
     if await check_user_group(message.from_user.id):
         await change_user_group(user_id=message.from_user.id, group=0)
         await message.answer(
@@ -213,118 +255,174 @@ async def delete_user_group(message: types.Message):
 
 @dp.message_handler(TextFilter(equals="Выбрать другой день"))
 async def choice_another_day(message: types.Message):
-    await Another_date.date.set()
+    """Получение расписания на день, выбранный пользователем.
+    
+    Возвращает клавиатуру-календарь.
+    """
+    await Another_day.date.set()
+    current_date = datetime.datetime.now()
+    current_month = current_date.month
+    current_year = current_date.year
     await message.answer(
-        text=("Если вы хотите узнать дату на конкретный день, то введите дату согласно шаблону: "
-              "20.06.2004\nЕсли вы хотите узнать на расписание на определённый период, "
-              "то введите дату согласно шаблону: 20.06.2004-01.07.2022"),
-        reply_markup=back_button,
+        text="Выберите день:",
+        reply_markup=CalendarMarkup(current_month, current_year).build.kb,
     )
 
-"""Переделать
-   Выглядит очень плохо, как и работает
-   Уже лучше, но нужно ещё лучше"""
-@dp.message_handler(state=Another_date.date)
-async def an_date(message: types.Message, state: FSMContext):
-    if message.text == "Назад":
-        await state.finish()
-        await message.answer(
-            text="Выберите дату",
-            reply_markup=kb_schedule
-        )
-    elif date_is_valid(message.text.split("-")):
-        if len(message.text.split("-")) == 2:
-            start_date, end_date = message.text.split("-")
+
+@dp.callback_query_handler(state=Another_day.date)
+async def choose_another_day(callback: types.CallbackQuery, state: FSMContext):
+    """Получение даты с календаря.
+    
+    Если группа пользователя в БД, возвращаем расписание.
+    В ином случае: запоминаем дату и запускаем состояние
+    для получения группы пользователя.
+    """
+    if "date" in callback.data:
+        start_day = formated_date(callback.data.split()[1])
+        if await check_user_group(callback.from_user.id):
+            group_id = await get_user_group(callback.from_user.id)
+            await state.finish()
+            await bot.delete_message(callback.from_user.id, callback.message.message_id)
+            schedule = (await get_schedule(group_id, start_day))[0]
+            await callback.message.answer(text=schedule, reply_markup=kb_schedule, parse_mode="Markdown")
         else:
-            start_date, end_date = message.text, None
-        if end_date is None or valid_range_length(start_date, end_date):
-            if await check_user_group(message.from_user.id):
-                group_id = await get_user_group(message.from_user.id)
-                await state.finish()
-                try:
-                    await message.answer(
-                        text=await get_schedule(
-                            group_id=group_id,
-                            start_date=start_date,
-                            end_date=end_date
-                        ),
-                        reply_markup=kb_schedule
-                    )
-                except MessageIsTooLong:
-                    await Another_date.date.set()
-                    await message.answer(
-                        text=("Вы ввели выбрали слишком большой диапазон" 
-                            "Попробуйте ещё раз только с меньшим диапозоном"),
-                        reply_markup=back_button
-                    )
-            else:
-                async with state.proxy() as data:
-                    data["start_date"], data["end_date"] = start_date, end_date
-                await Another_date.next()
-                await message.reply(
-                    text="Введите название вашей группы",
-                    reply_markup=await create_kb_first_pt()
-                )
-        else:
-            await Another_date.date.set()
-            await message.answer(
-                text=(
-                    "Вы ввели слишком большой диапазон\n"
-                    "Длина диапазоа не должена превышать 31 день"
-                ),
-                reply_markup=back_button
+            async with state.proxy() as data:
+                data["date"] = start_day
+            await Another_day.next()
+            await bot.delete_message(callback.from_user.id, callback.message.message_id)
+            await callback.message.answer(
+                text="Введите название вашей группы",
+                reply_markup=await first_pt_groups()
             )
-    else:
-        await Another_date.date.set()
-        await message.answer(
-            text="Вы ввели некорректные данные",
-            reply_markup=back_button
-        )
+    elif "next" in callback.data or "back" in callback.data:
+        await change_month(callback)
 
 
-@dp.message_handler(state=Another_date.group)
-async def get_group(message: types.Message, state: FSMContext):
+@dp.message_handler(state=Another_day.group)
+async def choose_group(message: types.Message, state: FSMContext):
+    """Получение группы пользователя."""
     if message.text == "Назад":
-        await state.finish()
-        await message.answer(
-            text=("Если вы хотите узнать дату на конкретный день, то введите дату согласно шаблону: "
-                  "20.06.2004\nЕсли вы хотите узнать на расписание на определённый период, "
-                  "то введите дату согласно шаблону: 20.06.2004-01.07.2022"),
-            reply_markup=back_button
-        )
+        await Another_day.date.set()
+        await change_day(message)
     elif message.text == "Дальше »":
         await message.answer(
             text="Меняем клавиатуру...",
-            reply_markup=await create_kb_second_pt()
+            reply_markup=await second_pt_groups()
         )
     elif message.text == "« Обратно":
         await message.answer(
             text="Возвращаем клавиатуру...",
-            reply_markup=await create_kb_first_pt()
+            reply_markup=await first_pt_groups()
         )
     elif await check_group_name(message.text):
         group_id = await get_group_id(message.text)
         async with state.proxy() as data:
-            try:
-                await message.answer(
-                    text=await get_schedule(
-                        group_id=group_id,
-                        start_date=data["start_date"],
-                        end_date=data["end_date"]
-                    ),
-                    reply_markup=kb_schedule
-                )
-            except MessageIsTooLong:
-                await state.finish()
-                await Another_date.date.set()
-                await message.answer(
-                    text=("Вы ввели выбрали слишком большой диапазон" 
-                          "Попробуйте ещё раз только с меньшим диапозоном"),
-                    reply_markup=back_button
-                )
+            schedule = (await get_schedule(group_id, data["date"]))[0]
+            await message.answer(text=schedule, reply_markup=kb_schedule, parse_mode="Markdown")
         await state.finish()
     else:
-        await Another_date.group.set()
+        await Another_day.group.set()
+        await message.answer(
+            text="Такой группы нет\nПопробуйте ещё раз",
+        )
+
+
+@dp.message_handler(TextFilter(equals="Выбрать диапозон"))
+async def choose_range(message: types.Message):
+    """Переводит пользователя в меню выбора диапозона."""
+    await Another_range.start_date.set()
+    current_date = datetime.datetime.now()
+    current_month = current_date.month
+    current_year = current_date.year
+    await message.answer(
+        text="Выберите первый день диапозона:",
+        reply_markup=CalendarMarkup(current_month, current_year).build.kb,
+    )
+
+
+@dp.callback_query_handler(state=Another_range.start_date)
+async def choose_start_day(callback: types.CallbackQuery, state: FSMContext):
+    """Получение первого дня диапозона."""
+    if "date" in callback.data:
+        start_date = formated_date(callback.data.split()[1])
+        async with state.proxy() as data:
+            data["start_date"] = start_date
+        await Another_range.next()
+        await callback.message.answer(
+            text=(
+                "Выберите последний день диапозона "
+                "(выберите день на клавиатуре сверху):"
+            )
+        )
+    elif "next" in callback.data or "back" in callback.data:
+        await change_month(callback)
+
+
+@dp.callback_query_handler(state=Another_range.end_date)
+async def choose_end_day(callback: types.CallbackQuery, state: FSMContext):
+    """Получение последнего дня диапозона."""
+    if "date" in callback.data:
+        end_date = formated_date(callback.data.split()[1])
+        async with state.proxy() as data:
+            if valid_range_length(data["start_date"], end_date):
+                if not valid_date(data["start_date"], end_date):
+                    data["start_date"], end_date = end_date, data["start_date"]
+                if await check_user_group(callback.from_user.id):
+                    group_id = await get_user_group(callback.from_user.id)
+                    await bot.delete_message(callback.from_user.id, callback.message.message_id)
+                    await state.finish()
+                    schedules = await get_schedule(group_id, data["start_date"], end_date)
+                    for i in range(len(schedules) - 1):
+                        await callback.message.answer(text=schedules[i], parse_mode="Markdown")
+                    await callback.message.answer(text=schedules[-1], reply_markup=kb_schedule, parse_mode="Markdown")
+                else:
+                    async with state.proxy() as data:
+                        data["end_date"] = end_date
+                    await Another_range.next()
+                    await bot.delete_message(callback.from_user.id, callback.message.message_id)
+                    await callback.message.answer(
+                        text="Введите название вашей группы",
+                        reply_markup=await first_pt_groups()
+                    )
+            else:
+                await callback.message.answer(text=(
+                    "Вы ввели слишком большой диапозон. "
+                    "Максимальная длина диапозона "
+                    "не должна превышать 31 дня. "
+                    "(Выберите другой день на клавиатуре)")
+                )
+    elif "next" in callback.data or "back" in callback.data:
+        await change_month(callback)
+
+
+@dp.message_handler(state=Another_range.group)
+async def choose_group(message: types.Message, state: FSMContext):
+    """Получение группы пользователя."""
+    if message.text == "Назад":
+        await Another_range.end_date.set()
+        await change_day(message)
+    elif await check_group_name(message.text):
+        group_id = await get_group_id(message.text)
+        async with state.proxy() as data:
+            if not valid_date(data["start_date"], data["end_date"]):
+                data["start_date"], data["end_date"] = data["end_date"], data["start_date"]
+            schedules = await get_schedule(group_id, data["start_date"], data["end_date"])
+            await state.finish()
+            for i in range(len(schedules) - 1):
+                await message.answer(text=schedules[i], parse_mode="Markdown")
+            await message.answer(text=schedules[-1], reply_markup=kb_schedule, parse_mode="Markdown")
+    elif message.text == "Дальше »":
+        await message.answer(
+            text="Меняем клавиатуру...",
+            reply_markup=await second_pt_groups()
+        )
+    elif message.text == "« Обратно":
+        await message.answer(
+            text="Возвращаем клавиатуру...",
+            reply_markup=await first_pt_groups()
+        )
+    else:
+        await Another_range.group.set()
         await message.answer(
             text="Такой группы нет\nПопробуйте ещё раз",
         )
@@ -343,12 +441,38 @@ async def send_help(message: types.Message):
     )
 
 
+async def change_month(callback: types.CallbackQuery):
+    """Смена месяца на клавиатуре-календаре."""
+    month, year = map(int, callback.data.split()[1].split("."))
+    if "next" in callback.data:
+        await callback.message.edit_reply_markup(
+            reply_markup=CalendarMarkup.next_month(month, year).kb
+        )
+    else:
+        await callback.message.edit_reply_markup(
+            reply_markup=CalendarMarkup.previous_month(month, year).kb
+        )
+
+
+async def change_day(message: types.Message):
+    """Позволяет изменить последний день в диапозоне."""
+    current_date = datetime.datetime.now()
+    month = current_date.month
+    year = current_date.year
+    await message.answer(
+        text="Выберите последний день диапозона",
+        reply_markup=CalendarMarkup(month, year).build.kb
+    )
+
+
 def loop():
+    """Создаёт цикл."""
     loop = asyncio.get_event_loop_policy().get_event_loop()
     return loop
 
 
-if __name__ == "__main__":
+def main():
+    """Запускает бота."""
     loop().run_until_complete(create_table())
     resp = loop().run_until_complete(get_groups_ids())
     loop().run_until_complete(add_groups_ids(resp))
