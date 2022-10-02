@@ -1,7 +1,7 @@
 """Модуль для утилит."""
 
 import datetime
-from typing import List
+from typing import Dict, List
 
 
 days_of_week = {
@@ -24,7 +24,7 @@ def render(json_response: List[dict]) -> List[str]:
         return ["Расписание не найдено"]
 
 
-def read_json(json: List[dict[str, str]]) -> List[str]:
+def read_json(json: List[Dict[str, str]]) -> List[str]:
     """Чтение json и рендер расписания."""
     schedule_messages = []
     message = ""
