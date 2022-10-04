@@ -339,7 +339,7 @@ async def choose_group(message: types.Message, state: FSMContext):
         )
 
 
-@dp.message_handler(TextFilter(equals="Выбрать диапозон"))
+@dp.message_handler(TextFilter(equals="Выбрать диапазон"))
 async def choose_range(message: types.Message):
     """Переводит пользователя в меню выбора диапазона."""
     await Another_range.start_date.set()

@@ -81,7 +81,7 @@ kb_schedule = (
     .add(KeyboardButton(text="На сегодня"))
     .insert(KeyboardButton(text="На завтра"))
     .add(KeyboardButton(text="Выбрать другой день"))
-    .insert(KeyboardButton(text="Выбрать диапозон"))
+    .insert(KeyboardButton(text="Выбрать диапазон"))
     .add(KeyboardButton(text="Назад"))
 )
 
