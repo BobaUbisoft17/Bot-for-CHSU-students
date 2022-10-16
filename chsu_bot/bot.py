@@ -9,6 +9,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text as TextFilter
 from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.utils.exceptions import MessageTextIsEmpty
 
 from db import (
     add_groups_ids,
@@ -37,7 +38,7 @@ from logger import logger
 
 from parse import get_groups_ids, get_schedule
 
-from utils import formated_date, valid_date, valid_range_length
+from utils import formated_date, render, valid_date, valid_range_length
 
 bot = Bot(token=os.getenv("BOTTOKEN"))
 dp = Dispatcher(bot, storage=MemoryStorage())
@@ -593,13 +594,13 @@ def loop() -> None:
 
 
 @dp.errors_handler()
-async def handle_errors() -> None:
+async def handle_errors(update, error) -> bool:
     """Обработка неожиданных ошибок."""
     logger.exception("Произошла непредвиденная ошибка!")
     return True
 
 
-@logger.catch(level="CRITICAL")
+@logger.catch
 def main() -> None:
     """Запускает бота."""
     logger.info("Запуск бота")
