@@ -1,7 +1,7 @@
 """Модуль для утилит."""
 
 import datetime
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 
 days_of_week = {
@@ -15,51 +15,32 @@ days_of_week = {
 }
 
 
-def render(json_response: List[dict]) -> List[str]:
-    """Рендер расписания."""
-    if json_response != []:
-        return read_json(json_response)
-    else:
-        return ["Расписание не найдено"]
-
-
-def read_json(json: List[Dict[str, str]]) -> List[str]:
+def read_json(json: List[Dict[str, str]]) -> Dict[str, str]:
     """Чтение json и рендер расписания."""
-    schedule_messages = []
-    message = ""
-    schedule = ""
+    schedule = {}
     for elem in json:
         date = elem["dateEvent"]
-        if schedule == "":
-            start_date = date
-            schedule += (
-                f"*Расписание на {start_date} *"
-                f"*- {get_week_day(start_date)}*\n\n"
-            )
-        elif date != start_date:
-            start_date = date
-            if len(message) + len(schedule) < 4096:
-                message += schedule
-            else:
-                schedule_messages.append(message)
-                message = schedule
-            schedule = (
-                f"*Расписание на {start_date} *"
-                f"*- {get_week_day(start_date)}*\n\n"
-            )
+        title = f"*Расписание на {date} - {get_week_day(date)}*"
         duration = get_duration_lesson(elem)
         lesson_name = get_lesson_and_type(elem)
         auditory = get_auditory(elem)
         lecture = get_lecture(elem)
-        schedule += (
-            f"⌚ {duration}\n🏫 {lesson_name}\n🧑 {lecture}\n🏢 {auditory}\n\n"
-        )
-    if len(message) + len(schedule) < 4096:
-        schedule_messages.append(message + schedule)
-    else:
-        schedule_messages.append(message)
-        schedule_messages.append(schedule)
-    return schedule_messages
+        try:
+            schedule[date] += (
+                f"⌚ {duration}\n🏫 "
+                f"{lesson_name}\n🧑 "
+                f"{lecture}\n🏢 "
+                f"{auditory}\n\n"
+            )
+        except KeyError:
+            schedule[date] = (
+                f"{title}\n\n⌚ "
+                f"{duration}\n🏫 "
+                f"{lesson_name}\n🧑 "
+                f"{lecture}\n🏢 "
+                f"{auditory}\n\n"
+            )
+    return schedule
 
 
 def get_duration_lesson(json: Dict[str, str]) -> str:
@@ -85,12 +66,23 @@ def get_auditory(json: Dict[str, str]) -> str:
 
 def get_lecture(json: Dict[str, str]) -> str:
     """Получение преподавателей."""
-    return ", ".join(
-        [
-            lecture["shortName"]
-            for lecture in json["lecturers"]
-        ]
-    )
+    return ", ".join([lecture["shortName"] for lecture in json["lecturers"]])
+
+
+def build_schedule(schedule: Dict[str, str]) -> List[str]:
+    """Сборка расписания по строкам."""
+    messages = []
+    message = ""
+    if "0" in schedule.keys():
+        return [schedule["0"]]
+    for lessons in schedule.values():
+        if len(message + lessons) < 4096:
+            message += lessons
+        else:
+            messages.append(message)
+            message = lessons
+    messages.append(message)
+    return messages
 
 
 def valid_range_length(start_date: str, end_date: str) -> bool:
@@ -118,3 +110,18 @@ def get_week_day(date: str) -> str:
 def formated_date(date: str) -> str:
     """Форматирование даты к необходимой для запроса форме."""
     return datetime.datetime.strptime(date, "%d.%m.%Y").strftime("%d.%m.%Y")
+
+
+def parse_dict(schedules: Dict[str, str]) -> Tuple[str, str]:
+    """Подготовка расписания для передачи в БД."""
+    today = datetime.datetime.now().strftime("%d.%m.%Y")
+    tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime(
+        "%d.%m.%Y"
+    )
+    if "0" in schedules.keys():
+        return [schedules["0"]] * 2
+    if len(schedules) == 2:
+        return [schedules[today], schedules[tomorrow]]
+    elif len(schedules) == 1 and today in schedules.keys():
+        return [schedules[today], "Расписание не найдено"]
+    return ["Расписание не найдено", schedules[tomorrow]]

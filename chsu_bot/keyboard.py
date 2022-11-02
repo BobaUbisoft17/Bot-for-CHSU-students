@@ -1,7 +1,7 @@
 """Модуль для создания клавиатур."""
 
-import datetime
 from calendar import monthrange
+import datetime
 from itertools import zip_longest
 from typing import List
 
@@ -11,7 +11,6 @@ from aiogram.types import (
     KeyboardButton,
     ReplyKeyboardMarkup,
 )
-
 from db import get_group_names
 
 month_by_number = {
@@ -96,7 +95,7 @@ async def first_pt_groups() -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add(KeyboardButton(text="Дальше »"))
     kb.add(KeyboardButton(text="Назад"))
-    group_names = [group_name[0] for group_name in (await get_group_names())]
+    group_names = await get_group_names()
     for i in range((len(group_names) + 6) // 2):
         kb.add(KeyboardButton(text=group_names[i]))
     kb.add(KeyboardButton(text="Дальше »"))
@@ -108,7 +107,7 @@ async def second_pt_groups() -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add(KeyboardButton(text="« Обратно"))
     kb.add(KeyboardButton(text="Назад"))
-    group_names = [group_name[0] for group_name in (await get_group_names())]
+    group_names = await get_group_names()
     for i in range((len(group_names) + 6) // 2, len(group_names)):
         kb.add(KeyboardButton(text=group_names[i]))
     kb.add(KeyboardButton(text="« Обратно"))

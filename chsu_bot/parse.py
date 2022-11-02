@@ -1,9 +1,11 @@
 """Модуль для парсинга данных о расписании."""
 
+import asyncio
 from typing import List, Optional
 import aiohttp
+import datetime
 
-from utils import render
+from utils import parse_dict, read_json
 
 
 URL = "http://api.chsu.ru/api/"
@@ -35,4 +37,6 @@ async def get_schedule(group_id: int, start_date: str, end_date: Optional[str] =
     await set_token()
     async with aiohttp.ClientSession() as session:
         async with session.get(url=URL+body_request, headers=HEADERS) as resp:
-            return render(await resp.json())
+            if (await resp.json()) == []:
+                return {"0" : "Расписание не найдено"}
+            return read_json(await resp.json())

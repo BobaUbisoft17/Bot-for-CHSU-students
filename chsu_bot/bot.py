@@ -2,6 +2,7 @@
 
 import asyncio
 import datetime
+from distutils.log import error
 import os
 
 from aiogram import Bot, Dispatcher, executor, types
@@ -9,8 +10,6 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text as TextFilter
 from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.utils.exceptions import MessageTextIsEmpty
-
 from db import (
     add_groups_ids,
     add_user_id,
@@ -20,25 +19,24 @@ from db import (
     check_user_id,
     create_table,
     get_group_id,
+    get_td_schedule,
+    get_tm_schedule,
     get_user_group,
 )
-
 from keyboard import (
     CalendarMarkup,
-    HELP,
     first_pt_groups,
+    HELP,
     kb_change_group,
     kb_greeting,
     kb_memory_group,
     kb_schedule,
     second_pt_groups,
 )
-
 from logger import logger
-
 from parse import get_groups_ids, get_schedule
-
-from utils import formated_date, render, valid_date, valid_range_length
+from update_schedule import loop_update_schedule, update_schedule
+from utils import build_schedule, formated_date, valid_date, valid_range_length
 
 bot = Bot(token=os.getenv("BOTTOKEN"))
 dp = Dispatcher(bot, storage=MemoryStorage())
@@ -108,16 +106,12 @@ async def get_td_tm_schedule(
     пользователя.
     """
     logger.info(f"{message.from_user.id} нажал на кнопку '{message.text}'")
-    if message.text == "На сегодня":
-        date = datetime.datetime.now().strftime("%d.%m.%Y")
-    else:
-        date = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime(
-            "%d.%m.%Y"
-        )
-
     if await check_user_group(message.from_user.id):
         group_id = await get_user_group(message.from_user.id)
-        schedule = (await get_schedule(group_id, date))[0]
+        if message.text == "На сегодня":
+            schedule = await get_td_schedule(group_id)
+        else:
+            schedule = await get_tm_schedule(group_id)
         await message.answer(
             text=schedule,
             reply_markup=kb_schedule,
@@ -125,11 +119,11 @@ async def get_td_tm_schedule(
         )
         logger.info(
             f"{message.from_user.id} "
-            f"получил расписание {date} для группы {group_id}"
+            f"получил расписание {message.text} для группы {group_id}"
         )
     else:
         async with state.proxy() as data:
-            data["date"] = date
+            data["date"] = message.text
 
         await Get_schedule.group.set()
         await message.reply(
@@ -162,9 +156,10 @@ async def get_group(message: types.Message, state: FSMContext) -> None:
     elif await check_group_name(message.text):
         group_id = await get_group_id(message.text)
         async with state.proxy() as data:
-            schedule = (
-                await get_schedule(group_id=group_id, start_date=data["date"])
-            )[0]
+            if data["date"] == "На сегодня":
+                schedule = await get_td_schedule(group_id)
+            else:
+                schedule = await get_tm_schedule(group_id)
             await message.answer(
                 text=schedule, reply_markup=kb_schedule, parse_mode="Markdown"
             )
@@ -325,7 +320,7 @@ async def choose_another_day(
             await bot.delete_message(
                 callback.from_user.id, callback.message.message_id
             )
-            schedule = (await get_schedule(group_id, start_day))[0]
+            schedule = build_schedule(await get_schedule(group_id, start_day))[0]
             await callback.message.answer(
                 text=schedule, reply_markup=kb_schedule, parse_mode="Markdown"
             )
@@ -377,7 +372,7 @@ async def choose_group(message: types.Message, state: FSMContext) -> None:
     elif await check_group_name(message.text):
         group_id = await get_group_id(message.text)
         async with state.proxy() as data:
-            schedule = (await get_schedule(group_id, data["date"]))[0]
+            schedule = build_schedule(await get_schedule(group_id, data["date"]))[0]
             await message.answer(
                 text=schedule, reply_markup=kb_schedule, parse_mode="Markdown"
             )
@@ -456,8 +451,10 @@ async def choose_end_day(
                         callback.from_user.id, callback.message.message_id
                     )
                     await state.finish()
-                    schedules = await get_schedule(
-                        group_id, data["start_date"], end_date
+                    schedules = build_schedule(
+                        await get_schedule(
+                            group_id, data["start_date"], end_date
+                        )
                     )
                     for i in range(len(schedules) - 1):
                         await callback.message.answer(
@@ -508,7 +505,9 @@ async def choose_end_day(
 
 
 @dp.message_handler(state=Another_range.group)
-async def choose_group(message: types.Message, state: FSMContext) -> None:
+async def choose_group_range(
+    message: types.Message, state: FSMContext
+) -> None:
     """Получение группы пользователя."""
     if message.text == "Назад":
         await Another_range.end_date.set()
@@ -516,8 +515,10 @@ async def choose_group(message: types.Message, state: FSMContext) -> None:
     elif await check_group_name(message.text):
         group_id = await get_group_id(message.text)
         async with state.proxy() as data:
-            schedules = await get_schedule(
-                group_id, data["start_date"], data["end_date"]
+            schedules = build_schedule(
+                await get_schedule(
+                    group_id, data["start_date"], data["end_date"]
+                )
             )
             await state.finish()
             for i in range(len(schedules) - 1):
@@ -588,7 +589,7 @@ async def change_day(message: types.Message) -> None:
     )
 
 
-def loop() -> None:
+def loop() -> asyncio.AbstractEventLoop:
     """Создаёт цикл."""
     return asyncio.get_event_loop_policy().get_event_loop()
 
@@ -607,4 +608,9 @@ def main() -> None:
     loop().run_until_complete(create_table())
     resp = loop().run_until_complete(get_groups_ids())
     loop().run_until_complete(add_groups_ids(resp))
-    executor.start_polling(dp, skip_updates=True)
+    loop().run_until_complete(update_schedule(0))
+    executor.start_polling(
+        dp,
+        skip_updates=True,
+        loop=loop().create_task(loop_update_schedule())
+    )
