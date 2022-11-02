@@ -24,7 +24,7 @@ async def update_schedule(update_time: int) -> None:
                 for group_id in group_ids[i : i + 60]
             ]
         )
-        await asyncio.sleep(10)
+        await asyncio.sleep(5)
     logger.info("Расписание успешно обнолвено")
 
 
