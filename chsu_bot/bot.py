@@ -2,14 +2,15 @@
 
 import asyncio
 import datetime
-from distutils.log import error
 import os
+from typing import Union
 
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text as TextFilter
 from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.utils import exceptions
 from db import (
     add_groups_ids,
     add_user_id,
@@ -190,7 +191,7 @@ async def settings(message: types.Message) -> None:
 
 
 @dp.message_handler(TextFilter(equals="Запомнить группу"))
-async def change_group(message: types.Message) -> None:
+async def memory_group(message: types.Message) -> None:
     """Запускает состояние для запоминания группы."""
     if await check_user_group(message.from_user.id):
         await message.reply(text="Не ломайте меня, пожалуйста🙏")
@@ -250,7 +251,10 @@ async def get_group_name(message: types.Message, state: FSMContext) -> None:
             )
             await state.finish()
             await message.answer(
-                text="Я Вас запомнил.\nТеперь вам не придёться выбирать группу",
+                text=(
+                    "Я Вас запомнил.\n"
+                    "Теперь вам не придётся выбирать группу"
+                ),
                 reply_markup=kb_greeting,
             )
             logger.info(
@@ -320,7 +324,9 @@ async def choose_another_day(
             await bot.delete_message(
                 callback.from_user.id, callback.message.message_id
             )
-            schedule = build_schedule(await get_schedule(group_id, start_day))[0]
+            schedule = build_schedule(
+                await get_schedule(group_id, start_day)
+            )[0]
             await callback.message.answer(
                 text=schedule, reply_markup=kb_schedule, parse_mode="Markdown"
             )
@@ -372,7 +378,9 @@ async def choose_group(message: types.Message, state: FSMContext) -> None:
     elif await check_group_name(message.text):
         group_id = await get_group_id(message.text)
         async with state.proxy() as data:
-            schedule = build_schedule(await get_schedule(group_id, data["date"]))[0]
+            schedule = build_schedule(
+                await get_schedule(group_id, data["date"])
+            )[0]
             await message.answer(
                 text=schedule, reply_markup=kb_schedule, parse_mode="Markdown"
             )
@@ -450,27 +458,12 @@ async def choose_end_day(
                     await bot.delete_message(
                         callback.from_user.id, callback.message.message_id
                     )
+                    await send_range_schedule(
+                        callback, group_id,
+                        data["start_date"],
+                        end_date
+                    )
                     await state.finish()
-                    schedules = build_schedule(
-                        await get_schedule(
-                            group_id, data["start_date"], end_date
-                        )
-                    )
-                    for i in range(len(schedules) - 1):
-                        await callback.message.answer(
-                            text=schedules[i], parse_mode="Markdown"
-                        )
-                    await callback.message.answer(
-                        text=schedules[-1],
-                        reply_markup=kb_schedule,
-                        parse_mode="Markdown",
-                    )
-                    logger.info(
-                        f"{callback.from_user.id} "
-                        f"получил расписание на диапазон "
-                        f"{data['start_date']}-{end_date} "
-                        f"для группы {group_id}"
-                    )
                 else:
                     data["end_date"] = end_date
                     await Another_range.next()
@@ -515,25 +508,9 @@ async def choose_group_range(
     elif await check_group_name(message.text):
         group_id = await get_group_id(message.text)
         async with state.proxy() as data:
-            schedules = build_schedule(
-                await get_schedule(
-                    group_id, data["start_date"], data["end_date"]
-                )
-            )
+            start_date, end_date = data["start_date"], data["end_date"]
             await state.finish()
-            for i in range(len(schedules) - 1):
-                await message.answer(text=schedules[i], parse_mode="Markdown")
-            await message.answer(
-                text=schedules[-1],
-                reply_markup=kb_schedule,
-                parse_mode="Markdown",
-            )
-            logger.info(
-                f"{message.from_user.id} "
-                f"получил расписание на "
-                f"диапазон {data['start_date']}-{data['end_date']} "
-                f"для группы {group_id}"
-            )
+        await send_range_schedule(message, group_id, start_date, end_date)
     elif message.text == "Дальше »":
         await message.answer(
             text="Меняем клавиатуру...", reply_markup=await second_pt_groups()
@@ -589,13 +566,47 @@ async def change_day(message: types.Message) -> None:
     )
 
 
+async def send_range_schedule(
+    message: Union[
+        types.CallbackQuery,
+        types.Message
+    ],
+    group_id: int,
+    start_date: str,
+    end_date: str
+) -> None:
+    user_id = message.from_user.id
+    schedules = build_schedule(
+        await get_schedule(
+            group_id, start_date, end_date
+        )
+    )
+    if type(message) == types.CallbackQuery:
+        message = message.message
+    for i in range(len(schedules) - 1):
+        await message.answer(
+            text=schedules[i], parse_mode="Markdown"
+        )
+    await message.answer(
+        text=schedules[-1],
+        reply_markup=kb_schedule,
+        parse_mode="Markdown",
+    )
+    logger.info(
+        f"{user_id} "
+        f"получил расписание на диапазон "
+        f"{start_date}-{end_date} "
+        f"для группы {group_id}"
+    )
+
+
 def loop() -> asyncio.AbstractEventLoop:
     """Создаёт цикл."""
     return asyncio.get_event_loop_policy().get_event_loop()
 
 
 @dp.errors_handler()
-async def handle_errors(update, error) -> bool:
+async def handle_errors(update: types.Update, error: exceptions) -> bool:
     """Обработка неожиданных ошибок."""
     logger.exception("Произошла непредвиденная ошибка!")
     return True

@@ -8,15 +8,15 @@ from logger import logger
 from parse import get_schedule
 
 
-async def update_schedule(update_time: int) -> None:
+async def update_schedule(waiting_time: int) -> None:
     """Получение расписания."""
-    await asyncio.sleep(update_time)
+    await asyncio.sleep(waiting_time)
     logger.info("Начался процесс обновления расписания")
     group_ids = await get_group_ids()
     today = datetime.datetime.now().strftime("%d.%m.%Y")
-    tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime(
-        "%d.%m.%Y"
-    )
+    tomorrow = (
+        datetime.datetime.now() + datetime.timedelta(days=1)
+    ).strftime("%d.%m.%Y")
     for i in range(0, len(group_ids), 60):
         await asyncio.gather(
             *[
@@ -39,4 +39,10 @@ async def reload_group_schedule(
 async def loop_update_schedule() -> None:
     """Обновление расписания в бесконечном цикле."""
     while True:
-        await update_schedule(21600)
+        # await update_schedule(21600)
+        now = datetime.datetime.now()
+
+        waiting_time = (
+            6 * (now.hour // 6 + 1) * 60 + 1 - (now.hour * 60 + now.minute)
+        ) * 60
+        await update_schedule(waiting_time)
