@@ -67,7 +67,13 @@ kb_greeting = (
     .add(KeyboardButton(text="Помощь"))
 )
 
-admin_greeting = kb_greeting.add(KeyboardButton(text="Сделать запись"))
+admin_greeting = (
+    ReplyKeyboardMarkup(resize_keyboard=True)
+    .add(KeyboardButton(text="Узнать расписание"))
+    .add(KeyboardButton(text="Настройки"))
+    .add(KeyboardButton(text="Помощь"))
+    .add(KeyboardButton(text="Сделать запись"))
+)
 
 kb_post = (
     ReplyKeyboardMarkup(resize_keyboard=True)

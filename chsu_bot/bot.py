@@ -45,7 +45,7 @@ from utils import build_schedule, formated_date, valid_date, valid_range_length
 
 bot = Bot(token=os.getenv("BOTTOKEN"))
 dp = Dispatcher(bot, storage=MemoryStorage())
-admin = os.getenv("admin_id")
+admin = int(os.getenv("admin_id"))
 
 
 class Get_schedule(StatesGroup):
@@ -748,7 +748,7 @@ def main() -> None:
     loop().run_until_complete(create_table())
     resp = loop().run_until_complete(get_groups_ids())
     loop().run_until_complete(add_groups_ids(resp))
-    loop().run_until_complete(update_schedule(0))
+    #loop().run_until_complete(update_schedule(0))
     executor.start_polling(
         dp,
         skip_updates=True,
