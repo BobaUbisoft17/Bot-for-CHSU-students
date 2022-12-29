@@ -174,3 +174,13 @@ async def get_user_group(user_id: int) -> int:
                 "SELECT groupId FROM users WHERE userId=?", [user_id]
             )
             return (await cursor.fetchone())[0]
+
+
+async def get_users_id() -> List[int]:
+    """Получение id всех пользователей бота."""
+    async with aiosqlite.connect("chsuBot.db") as db:
+        async with db.cursor() as cursor:
+            await cursor.execute(
+                "SELECT userId FROM users"
+            )
+            return [id[0] for id in await cursor.fetchall()]

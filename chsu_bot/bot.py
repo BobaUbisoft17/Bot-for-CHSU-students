@@ -8,7 +8,7 @@ from typing import Union
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import Text as TextFilter
+from aiogram.dispatcher.filters import Text as TextFilter, IDFilter
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.utils import exceptions
 from db import (
@@ -23,14 +23,18 @@ from db import (
     get_td_schedule,
     get_tm_schedule,
     get_user_group,
+    get_users_id,
 )
 from keyboard import (
     CalendarMarkup,
     first_pt_groups,
     HELP,
+    admin_greeting,
+    back_button,
     kb_change_group,
     kb_greeting,
     kb_memory_group,
+    kb_post,
     kb_schedule,
     second_pt_groups,
 )
@@ -41,6 +45,7 @@ from utils import build_schedule, formated_date, valid_date, valid_range_length
 
 bot = Bot(token=os.getenv("BOTTOKEN"))
 dp = Dispatcher(bot, storage=MemoryStorage())
+admin = os.getenv("admin_id")
 
 
 class Get_schedule(StatesGroup):
@@ -71,16 +76,140 @@ class Another_range(StatesGroup):
     group = State()
 
 
+class Textpost(StatesGroup):
+    """Класс для состояния текстового поста."""
+
+    text = State()
+
+
+class Photopost(StatesGroup):
+    """Класс для состояния поста с фото."""
+
+    picture = State()
+
+
+class Mixpost(StatesGroup):
+    """Класс для состояния смешанного поста."""
+
+    text = State()
+    picture = State()
+
+
 @dp.message_handler(commands="start")
 async def send_welcome(message: types.Message) -> None:
     """Приветствует пользователя и переводит в главное меню."""
     if not (await check_user_id(message.from_user.id)):
         await add_user_id(message.from_user.id)
+    if message.from_user.id != admin:
+        await message.answer(
+            "Здравствуйте!!!\nЯ бот, упрощающий получение расписания занятий ЧГУ",
+            reply_markup=kb_greeting,
+        )
+        logger.info(f"{message.from_user.id} выполнил команду '/start'")
+    else:
+        await message.answer(
+            (
+                "Здравствуйте!!!\nЯ бот, упрощающий получение расписания занятий ЧГУ"
+                "\nС повышением!!!"
+            ),
+            reply_markup=admin_greeting,
+        )
+
+
+@dp.message_handler(IDFilter(admin), TextFilter(equals="Сделать запись"))
+async def make_post(message: types.Message) -> None:
+    """Переход к меню администратора."""
     await message.answer(
-        "Здравствуйте!!!\nЯ бот, упрощающий получение расписания занятий ЧГУ",
-        reply_markup=kb_greeting,
+        text="Выберите тип поста",
+        reply_markup=kb_post,
     )
-    logger.info(f"{message.from_user.id} выполнил команду '/start'")
+
+
+@dp.message_handler(
+    IDFilter(admin),
+    TextFilter(["Текстовый пост", "Фото", "Смешанный пост"]),
+)
+async def get_txt_post(message: types.Message) -> None:
+    """Переход к созданию поста."""
+    if message.text == "Текстовый пост":
+        await Textpost.text.set()
+        await message.answer(
+            text="Введите сообщение",
+            reply_markup=back_button,
+        )
+    elif message.text == "Фото":
+        await Photopost.picture.set()
+        await message.answer(
+            text="Отправьте мне фото для поста",
+            reply_markup=back_button,
+        )
+    elif message.text == "Смешанный пост":
+        await Mixpost.text.set()
+        await message.answer(
+            text="Введите текст для поста",
+            reply_markup=back_button,
+        )
+
+
+@dp.message_handler(state=Textpost.text)
+async def message_post(message: types.Message, state: FSMContext) -> None:
+    """Создание текстового поста."""
+    await state.finish()
+    for user_id in await get_users_id():
+        await bot.send_message(user_id, message.text)
+    await message.answer(
+        text="Все пользователи оповещены",
+        reply_markup=admin_greeting,
+    )
+
+
+@dp.message_handler(state=Photopost.picture, content_types=["photo"])
+async def send_img(message: types.Message, state: FSMContext) -> None:
+    """Создание графического поста."""
+    await state.finish()
+    for user_id in await get_users_id():
+        await bot.send_photo(user_id, message.photo[-1].file_id)
+    await message.answer(
+        text="Все пользователи оповещены",
+        reply_markup=admin_greeting,
+    )
+
+
+@dp.message_handler(state=Mixpost.text)
+async def memory_text(message: types.Message, state: FSMContext) -> None:
+    """Получение текста для смешанного поста."""
+    if message.text == "Назад":
+        await state.finish()
+        await message.answer(
+            text="выберите тип поста",
+            reply_markup=kb_post,
+        )
+    else:
+        async with state.proxy() as data:
+            data["text"] = message.text
+        await Mixpost.next()
+        await message.answer(
+            text="Отправьте мне фото для поста",
+        )
+
+
+@dp.message_handler(state=Mixpost.picture, content_types=["photo"])
+async def memory_pic(message: types.Message, state: FSMContext) -> None:
+    """Получение фото и рассылка готового поста."""
+    photo_id = message.photo[-1].file_id
+
+    async with state.proxy() as data:
+        for user_id in await get_users_id():
+            await bot.send_photo(
+                user_id,
+                photo_id,
+                data["text"],
+            )
+    await state.finish()
+    await message.answer(
+        text="Все пользователи оповещены",
+        reply_markup=admin_greeting,
+    )
 
 
 @dp.message_handler(TextFilter(equals="Узнать расписание"))

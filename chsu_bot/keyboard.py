@@ -67,6 +67,16 @@ kb_greeting = (
     .add(KeyboardButton(text="Помощь"))
 )
 
+admin_greeting = kb_greeting.add(KeyboardButton(text="Сделать запись"))
+
+kb_post = (
+    ReplyKeyboardMarkup(resize_keyboard=True)
+    .add(KeyboardButton(text="Текстовый пост"))
+    .add(KeyboardButton(text="Фото"))
+    .add(KeyboardButton(text="Смешанный пост"))
+    .add(KeyboardButton(text="Назад"))
+)
+
 kb_memory_group = (
     ReplyKeyboardMarkup(resize_keyboard=True)
     .add(KeyboardButton(text="Запомнить группу"))
