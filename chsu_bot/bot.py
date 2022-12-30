@@ -688,7 +688,7 @@ async def back(message: types.Message) -> None:
 @dp.message_handler(TextFilter(equals="Помощь"))
 async def send_help(message: types.Message) -> None:
     """Отправление сообщения с помощью."""
-    await message.answer(text=HELP, reply_markup=kb_greeting)
+    await message.answer(text=HELP)
 
 
 async def change_month(callback: types.CallbackQuery) -> None:
