@@ -50,7 +50,7 @@ HELP = (
     "Телеграм @BobaUbisoft\n"
     "VK vk.com/bobaubisoft\n"
     "Почта aksud2316@gmail.com\n\n"
-    "Поддердать проект: 5536 9137 8142 8269"
+    "Поддержать проект: 5536 9137 8142 8269"
 )
 
 empty_kb = ReplyKeyboardMarkup()

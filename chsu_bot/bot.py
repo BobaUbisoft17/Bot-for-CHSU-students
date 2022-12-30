@@ -8,7 +8,7 @@ from typing import Union
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import Text as TextFilter, IDFilter
+from aiogram.dispatcher.filters import IDFilter, Text as TextFilter
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.utils import exceptions
 from db import (
@@ -26,11 +26,11 @@ from db import (
     get_users_id,
 )
 from keyboard import (
+    admin_greeting,
+    back_button,
     CalendarMarkup,
     first_pt_groups,
     HELP,
-    admin_greeting,
-    back_button,
     kb_change_group,
     kb_greeting,
     kb_memory_group,
@@ -102,14 +102,18 @@ async def send_welcome(message: types.Message) -> None:
         await add_user_id(message.from_user.id)
     if message.from_user.id != admin:
         await message.answer(
-            "Здравствуйте!!!\nЯ бот, упрощающий получение расписания занятий ЧГУ",
+            (
+                "Здравствуйте!!!\n"
+                "Я бот, упрощающий получение расписания занятий ЧГУ"
+            ),
             reply_markup=kb_greeting,
         )
         logger.info(f"{message.from_user.id} выполнил команду '/start'")
     else:
         await message.answer(
             (
-                "Здравствуйте!!!\nЯ бот, упрощающий получение расписания занятий ЧГУ"
+                "Здравствуйте!!!\n"
+                "Я бот, упрощающий получение расписания занятий ЧГУ"
                 "\nС повышением!!!"
             ),
             reply_markup=admin_greeting,
@@ -659,8 +663,13 @@ async def choose_group_range(
 @dp.message_handler(TextFilter(equals="Назад"))
 async def back(message: types.Message) -> None:
     """Возвращение пользователя в главное меню."""
+    if message.from_user.id != admin:
+        kb = kb_greeting
+    else:
+        kb = admin_greeting
     await message.answer(
-        text="Возвращаемся в главное меню", reply_markup=kb_greeting
+        text="Возвращаемся в главное меню",
+        reply_markup=kb,
     )
 
 
@@ -704,6 +713,7 @@ async def send_range_schedule(
     start_date: str,
     end_date: str
 ) -> None:
+    """Отправка расписания для группы на интервале."""
     user_id = message.from_user.id
     schedules = build_schedule(
         await get_schedule(
