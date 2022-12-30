@@ -770,7 +770,7 @@ def main() -> None:
     loop().run_until_complete(create_table())
     resp = loop().run_until_complete(get_groups_ids())
     loop().run_until_complete(add_groups_ids(resp))
-    #loop().run_until_complete(update_schedule(0))
+    loop().run_until_complete(update_schedule(0))
     executor.start_polling(
         dp,
         skip_updates=True,
