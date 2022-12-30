@@ -359,9 +359,13 @@ async def get_group_name(message: types.Message, state: FSMContext) -> None:
     """Сосотояние для запоминания группы пользователя."""
     if message.text == "Назад":
         await state.finish()
+        if await check_user_group(message.from_user.id):
+            keyboard = kb_change_group
+        else:
+            keyboard = kb_memory_group
         await message.answer(
-            text="Возвращаемся в главное меню",
-            reply_markup=kb_greeting,
+            text="Переходим в раздел настроек",
+            reply_markup=keyboard,
         )
         logger.info(
             f"{message.from_user.id} отказался от запоминания его группы"
@@ -383,12 +387,16 @@ async def get_group_name(message: types.Message, state: FSMContext) -> None:
                 user_id=message.from_user.id, group=message.text
             )
             await state.finish()
+            if message.from_user.id == admin:
+                kb = admin_greeting
+            else:
+                kb = kb_greeting
             await message.answer(
                 text=(
                     "Я Вас запомнил.\n"
                     "Теперь вам не придётся выбирать группу"
                 ),
-                reply_markup=kb_greeting,
+                reply_markup=kb,
             )
             logger.info(
                 f"Группа {message.from_user.id} {message.text} теперь в БД"
@@ -411,8 +419,12 @@ async def delete_user_group(message: types.Message) -> None:
     """Удаление данных о группе пользователя."""
     if await check_user_group(message.from_user.id):
         await change_user_group(user_id=message.from_user.id)
+        if message.from_user.id == admin:
+            kb = admin_greeting
+        else:
+            kb = kb_greeting
         await message.answer(
-            text="Все данные о вашей группе удалены", reply_markup=kb_greeting
+            text="Все данные о вашей группе удалены", reply_markup=kb
         )
         logger.info(f"Группа {message.from_user.id} удалена из БД")
     else:
@@ -758,7 +770,7 @@ def main() -> None:
     loop().run_until_complete(create_table())
     resp = loop().run_until_complete(get_groups_ids())
     loop().run_until_complete(add_groups_ids(resp))
-    loop().run_until_complete(update_schedule(0))
+    #loop().run_until_complete(update_schedule(0))
     executor.start_polling(
         dp,
         skip_updates=True,
