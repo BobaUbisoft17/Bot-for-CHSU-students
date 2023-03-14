@@ -11,7 +11,7 @@ from aiogram.types import (
     KeyboardButton,
     ReplyKeyboardMarkup,
 )
-from db import get_group_names
+from database.group_db import get_group_names
 
 month_by_number = {
     1: "Январь",
@@ -55,55 +55,96 @@ HELP = (
 
 empty_kb = ReplyKeyboardMarkup()
 
-back_button = ReplyKeyboardMarkup(resize_keyboard=True).add(
-    KeyboardButton(text="Назад")
-)
+
+class BackButtonKeyboard(ReplyKeyboardMarkup):
+    """Кнопка выхода в главное меню."""
+
+    def __init__(self) -> None:
+        super().__init__(keyboard=[
+            KeyboardButton(text="Назад")
+        ], resize_keyboard=True)
 
 
-kb_greeting = (
-    ReplyKeyboardMarkup(resize_keyboard=True)
-    .add(KeyboardButton(text="Узнать расписание"))
-    .add(KeyboardButton(text="Настройки"))
-    .add(KeyboardButton(text="Помощь"))
-)
+class GreetingKeyboard(ReplyKeyboardMarkup):
+    """Основная клавиатура."""
 
-admin_greeting = (
-    ReplyKeyboardMarkup(resize_keyboard=True)
-    .add(KeyboardButton(text="Узнать расписание"))
-    .add(KeyboardButton(text="Настройки"))
-    .add(KeyboardButton(text="Помощь"))
-    .add(KeyboardButton(text="Сделать запись"))
-)
+    def __init__(self) -> None:
+        super().__init__(keyboard=[
+            [KeyboardButton(text="Узнать расписание")],
+            [KeyboardButton(text="Настройки")],
+            [KeyboardButton(text="Помощь")],
+        ], resize_keyboard=True)
 
-kb_post = (
-    ReplyKeyboardMarkup(resize_keyboard=True)
-    .add(KeyboardButton(text="Текстовый пост"))
-    .add(KeyboardButton(text="Фото"))
-    .add(KeyboardButton(text="Смешанный пост"))
-    .add(KeyboardButton(text="Назад"))
-)
 
-kb_memory_group = (
-    ReplyKeyboardMarkup(resize_keyboard=True)
-    .add(KeyboardButton(text="Запомнить группу"))
-    .add(KeyboardButton(text="Назад"))
-)
+class AdminGreetingKeyboard(ReplyKeyboardMarkup):
+    """Клавиатура для админа."""
 
-kb_change_group = (
-    ReplyKeyboardMarkup(resize_keyboard=True)
-    .add(KeyboardButton(text="Изменить группу"))
-    .add(KeyboardButton(text="Удалить данные о группе"))
-    .add(KeyboardButton(text="Назад"))
-)
+    def __init__(self) -> None:
+        super().__init__(keyboard=[
+            [KeyboardButton(text="Узнать расписание")],
+            [KeyboardButton(text="Настройки")],
+            [KeyboardButton(text="Помощь")],
+            [KeyboardButton(text="Сделать запись")],
+        ], resize_keyboard=True)
 
-kb_schedule = (
-    ReplyKeyboardMarkup(resize_keyboard=True)
-    .add(KeyboardButton(text="На сегодня"))
-    .insert(KeyboardButton(text="На завтра"))
-    .add(KeyboardButton(text="Выбрать другой день"))
-    .insert(KeyboardButton(text="Выбрать диапазон"))
-    .add(KeyboardButton(text="Назад"))
-)
+
+class PostKeyboard(ReplyKeyboardMarkup):
+    """Клавиатура для выбора типа записи."""
+
+    def __init__(self) -> None:
+        super().__init__(keyboard=[
+            [KeyboardButton(text="Текстовый пост")],
+            [KeyboardButton(text="Фото")],
+            [KeyboardButton(text="Смешанный пост")],
+            [KeyboardButton(text="Назад")],
+        ], resize_keyboard=True)
+
+
+class SettingsKeyboard(ReplyKeyboardMarkup):
+    """Клавиатура выбора настроек."""
+
+    def __init__(self) -> None:
+        super().__init__(keyboard=[
+            [KeyboardButton(text="Изменить данные о группе")],
+            [KeyboardButton(text="Назад")],
+        ], resize_keyboard=True)
+
+
+class MemoryGroupKeyboard(ReplyKeyboardMarkup):
+    """Клавиатруа запоминания группы."""
+
+    def __init__(self) -> None:
+        super().__init__(keyboard=[
+            [KeyboardButton(text="Запомнить группу")],
+            [KeyboardButton(text="Назад")]
+        ], resize_keyboard=True)
+
+
+class ChangeGroupKeyboard(ReplyKeyboardMarkup):
+    """Клавиатура изменения данных о группе."""
+
+    def __init__(self) -> None:
+        super().__init__(keyboard=[
+            [KeyboardButton(text="Изменить группу")],
+            [KeyboardButton(text="Удалить данные о группе")],
+            [KeyboardButton(text="Назад")],
+        ], resize_keyboard=True)
+
+
+class ChoiceDateKeyboard(ReplyKeyboardMarkup):
+    """Клавиатура выбора даты."""
+
+    def __init__(self) -> None:
+        super().__init__(keyboard=[
+            [
+                KeyboardButton(text="На сегодня"),
+                KeyboardButton(text="На завтра")],
+            [
+                KeyboardButton(text="Выбрать другой день"),
+                KeyboardButton(text="Выбрать диапазон"),
+            ],
+            [KeyboardButton(text="Назад")],
+        ], resize_keyboard=True)
 
 
 async def first_pt_groups() -> ReplyKeyboardMarkup:
@@ -130,55 +171,33 @@ async def second_pt_groups() -> ReplyKeyboardMarkup:
     return kb
 
 
-class Markup:
-    """Класс для создания и сборки клавиатуры календаря."""
-
-    def __init__(
-        self,
-        title: str,
-        days_header: List[InlineKeyboardButton],
-        days: List[InlineKeyboardButton],
-        nav_buttons: List[InlineKeyboardButton],
-    ) -> None:
-        """Инициализация всех значений."""
-        self.keyboard = InlineKeyboardMarkup()
-        self.title = title
-        self.days_header = days_header
-        self.days = days
-        self.nav_buttons = nav_buttons
-
-    @property
-    def kb(self) -> InlineKeyboardMarkup:
-        """Свойство для конечной сборки клавиатуры."""
-        self.keyboard.add(self.title).row(*self.days_header)
-        rows_with_days_numbers = list(zip_longest(*[iter(self.days)] * 7))
-        for row in rows_with_days_numbers:
-            self.keyboard.row(*row)
-        self.keyboard.row(*self.nav_buttons)
-        return self.keyboard
-
-
-class CalendarMarkup:
+class CalendarMarkup(InlineKeyboardMarkup):
     """Класс для создания календаря."""
 
     def __init__(self, month: int, year: int) -> None:
         """Инициализация всех значений."""
         self.month = month
         self.year = year
+        super().__init__(inline_keyboard=[
+            [self.title()],
+            self.days_header(),
+            *self.days(),
+            self.nav_buttons()
+        ])
 
-    def next_month(self) -> Markup:
+    def next_month(self) -> 'CalendarMarkup':
         """Получение данных на следующий месяц."""
         current_month = datetime.date(self.year, self.month, 5)
         current_days_count = monthrange(self.year, self.month)[1]
         next_date = current_month + datetime.timedelta(days=current_days_count)
-        return CalendarMarkup(next_date.month, next_date.year).build
+        return CalendarMarkup(next_date.month, next_date.year)
 
-    def previous_month(self) -> Markup:
+    def previous_month(self) -> 'CalendarMarkup':
         """Получение данных на предыдущий месяц."""
         current_month = datetime.date(self.year, self.month, 5)
         current_days_count = monthrange(self.year, self.month)[1]
         next_date = current_month - datetime.timedelta(days=current_days_count)
-        return CalendarMarkup(next_date.month, next_date.year).build
+        return CalendarMarkup(next_date.month, next_date.year)
 
     def title(self) -> InlineKeyboardButton:
         """Создание заголовка календаря."""
@@ -195,7 +214,7 @@ class CalendarMarkup:
             for day in days
         ]
 
-    def days(self) -> List[InlineKeyboardButton]:
+    def days(self) -> List[List[InlineKeyboardButton]]:
         """Метод для заполнения календаря днями месяца."""
         start_day, days_count = monthrange(self.year, self.month)
         week_days = [
@@ -205,33 +224,25 @@ class CalendarMarkup:
             week_days.append(
                 InlineKeyboardButton(
                     text=str(i),
-                    callback_data=f"date {i}.{self.month}.{self.year}",
+                    callback_data=(
+                        f"date {i:02}.{self.month:02}.{self.year:04}"
+                    ),
                 )
             )
         if len(week_days) % 7 != 0:
             week_days += [
                 InlineKeyboardButton(text=" ", callback_data="None")
             ] * (7 - len(week_days) % 7)
-        return week_days
+        return list(zip_longest(*[iter(week_days)] * 7))
 
     def nav_buttons(self) -> List[InlineKeyboardButton]:
         """Добавление кнопок для перемещения по календарю."""
         return [
             InlineKeyboardButton(
-                text="<", callback_data=f"back {self.month}.{self.year}"
+                text="<", callback_data=f"back {self.month:02}.{self.year:04}"
             ),
             InlineKeyboardButton(text="Меню", callback_data="menu"),
             InlineKeyboardButton(
-                text=">", callback_data=f"next {self.month}.{self.year}"
+                text=">", callback_data=f"next {self.month:02}.{self.year:04}"
             ),
         ]
-
-    @property
-    def build(self) -> Markup:
-        """Передача данных для сборки клавиатуры."""
-        return Markup(
-            self.title(),
-            self.days_header(),
-            self.days(),
-            self.nav_buttons(),
-        )

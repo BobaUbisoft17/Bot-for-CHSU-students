@@ -107,12 +107,7 @@ def get_week_day(date: str) -> str:
     ]
 
 
-def formated_date(date: str) -> str:
-    """Форматирование даты к необходимой для запроса форме."""
-    return datetime.datetime.strptime(date, "%d.%m.%Y").strftime("%d.%m.%Y")
-
-
-def parse_dict(schedules: Dict[str, str]) -> Tuple[str, str]:
+def get_two_days_schedule(schedules: Dict[str, str]) -> Tuple[str, str]:
     """Подготовка расписания для передачи в БД."""
     today = datetime.datetime.now().strftime("%d.%m.%Y")
     tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime(

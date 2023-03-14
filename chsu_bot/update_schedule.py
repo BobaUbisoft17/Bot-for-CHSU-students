@@ -3,7 +3,7 @@
 import asyncio
 import datetime
 
-from db import get_group_ids, update_group_schedule
+from database.group_db import get_group_ids, update_group_schedule
 from logger import logger
 from parse import get_schedule
 
