@@ -38,20 +38,7 @@ days = [
     "Вс",
 ]
 
-HELP = (
-    "Бот, упрощающий получение расписания студениами ЧГУ.\n\n"
-    "Получение расписания - можно получать расписание как на сегодня/завтра, "
-    "так и на произвольную дату или произвольный промежуток."
-    "Есть функция запоминания группы пользователя для получения "
-    "расписания по нажатию *одной кнопки.\n\n"
-    "Исходный код скоро будет выложен на GitHub "
-    "https://github.com/BobaUbisoft17\n"
-    "Связаться с автором проекта:\n"
-    "Телеграм @BobaUbisoft\n"
-    "VK vk.com/bobaubisoft\n"
-    "Почта aksud2316@gmail.com\n\n"
-    "Поддержать проект: 5536 9137 8142 8269"
-)
+
 
 empty_kb = ReplyKeyboardMarkup()
 
@@ -144,7 +131,10 @@ class ChoiceDateKeyboard(ReplyKeyboardMarkup):
                 KeyboardButton(text="Выбрать диапазон"),
             ],
             [KeyboardButton(text="Назад")],
-        ], resize_keyboard=True)
+        ], 
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
 
 
 async def first_pt_groups() -> ReplyKeyboardMarkup:
