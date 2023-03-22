@@ -183,7 +183,10 @@ async def send_img(message: types.Message, state: FSMContext) -> None:
     """Создание графического поста."""
     await state.finish()
     for user_id in await get_users_id():
-        await bot.send_photo(user_id, message.photo[-1].file_id)
+        try:
+            await bot.send_photo(user_id, message.photo[-1].file_id)
+        except exceptions.BotBlocked:
+            await delete_user_id(user_id)
     await message.answer(
         text=ALL_USERS_HAVE_BEEN_ANNOUNCED,
         reply_markup=AdminGreetingKeyboard(),
@@ -214,11 +217,14 @@ async def memory_pic(message: types.Message, state: FSMContext) -> None:
 
     data = await state.get_data()
     for user_id in await get_users_id():
-        await bot.send_photo(
-            user_id,
-            photo_id,
-            data["text"],
-        )
+        try:
+            await bot.send_photo(
+                user_id,
+                photo_id,
+                data["text"],
+            )
+        except exceptions.BotBlocked:
+            await delete_user_id(user_id)
     await state.finish()
     await message.answer(
         text=ALL_USERS_HAVE_BEEN_ANNOUNCED,
