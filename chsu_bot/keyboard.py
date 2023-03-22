@@ -61,7 +61,7 @@ class BackButtonKeyboard(ReplyKeyboardMarkup):
 
     def __init__(self) -> None:
         super().__init__(keyboard=[
-            KeyboardButton(text="Назад")
+            [KeyboardButton(text="Назад")]
         ], resize_keyboard=True)
 
 
