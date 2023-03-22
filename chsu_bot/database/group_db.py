@@ -18,7 +18,7 @@ async def add_groups_ids(ids_and_group_names: List[Tuple[int, str]]) -> None:
                     "INSERT INTO groupId (groupName, id) VALUES (?, ?)",
                     [elem["title"], elem["id"]],
                 )
-                await db.commit()
+        await db.commit()
 
 
 async def update_group_schedule(
@@ -32,7 +32,7 @@ async def update_group_schedule(
                 "UPDATE groupId SET td_schedule=?, tm_schedule=? WHERE id=?",
                 [td_schedule, tm_schedule, group_id],
             )
-            await db.commit()
+        await db.commit()
 
 
 async def get_td_schedule(group_id: int) -> str:

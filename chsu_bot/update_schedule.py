@@ -39,7 +39,6 @@ async def reload_group_schedule(
 async def loop_update_schedule() -> None:
     """Обновление расписания в бесконечном цикле."""
     while True:
-        # await update_schedule(21600)
         now = datetime.datetime.now()
 
         waiting_time = (

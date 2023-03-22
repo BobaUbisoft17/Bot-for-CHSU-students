@@ -24,6 +24,7 @@ from database.user_db import (
     change_user_group,
     check_user_group,
     check_user_id,
+    delete_user_id,
     get_user_group,
     get_users_id,
 )
@@ -167,7 +168,10 @@ async def message_post(message: types.Message, state: FSMContext) -> None:
     """Создание текстового поста."""
     await state.finish()
     for user_id in await get_users_id():
-        await bot.send_message(user_id, message.text)
+        try:
+            await bot.send_message(user_id, message.text)
+        except exceptions.BotBlocked:
+            await delete_user_id(user_id)
     await message.answer(
         text=ALL_USERS_HAVE_BEEN_ANNOUNCED,
         reply_markup=AdminGreetingKeyboard(),

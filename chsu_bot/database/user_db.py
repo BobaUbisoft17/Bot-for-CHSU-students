@@ -27,7 +27,17 @@ async def add_user_id(user_id: int, group_name: Optional[int] = 0) -> None:
                 "INSERT INTO users (userId, groupId) VALUES (?, ?)",
                 [user_id, group_name],
             )
-            await db.commit()
+        await db.commit()
+
+
+async def delete_user_id(user_id: int) -> None:
+    """Удаление пользователя из БД."""
+    async with aiosqlite.connect("chsuBot.db") as db:
+        async with db.cursor() as cursor:
+            await cursor.execute(
+                "DELETE FROM users WHERE userId=?", [user_id]
+            )
+        await db.commit()
 
 
 async def change_user_group(user_id: int, group: Optional[str] = None) -> None:
@@ -41,7 +51,7 @@ async def change_user_group(user_id: int, group: Optional[str] = None) -> None:
             await cursor.execute(
                 f"UPDATE users SET groupId={group_id} WHERE userId={user_id}"
             )
-            await db.commit()
+        await db.commit()
 
 
 async def get_users_id() -> List[int]:
