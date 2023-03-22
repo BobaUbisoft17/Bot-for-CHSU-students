@@ -369,7 +369,7 @@ async def choose_another_day(
                 reply_markup=await first_pt_groups(),
             )
             logger.info(f"{callback.from_user.id} переходит к выбору группы")
-    elif callback.data in ["next", "back"]:
+    elif callback.data.split()[0] in ["next", "back"]:
         await change_month(callback)
     elif "menu" in callback.data:
         await callback.message.delete()
@@ -441,7 +441,7 @@ async def choose_start_day(
                 "(выберите день на клавиатуре сверху):"
             )
         )
-    elif callback.data in ["next", "back"]:
+    elif callback.data.split()[0] in ["next", "back"]:
         await change_month(callback)
     elif "menu" in callback.data:
         await callback.message.delete()
@@ -460,7 +460,7 @@ async def choose_end_day(
     """Получение последнего дня диапазона."""
     if "date" in callback.data:
         await get_range_date(callback, state)
-    elif callback.data in ["back", "next"]:
+    elif callback.data.split()[0] in ["back", "next"]:
         await change_month(callback)
     elif "menu" in callback.data:
         await callback.message.delete()
