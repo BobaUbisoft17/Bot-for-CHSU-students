@@ -132,9 +132,7 @@ class ChoiceDateKeyboard(ReplyKeyboardMarkup):
             ],
             [KeyboardButton(text="Назад")],
         ], 
-        resize_keyboard=True,
-        one_time_keyboard=True
-    )
+        resize_keyboard=True)
 
 
 async def first_pt_groups() -> ReplyKeyboardMarkup:
