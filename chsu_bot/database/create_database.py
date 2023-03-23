@@ -5,7 +5,7 @@ import aiosqlite
 
 async def create_table() -> None:
     """Создание базы данных и таблиц в ней."""
-    async with aiosqlite.connect("chsuBot.db") as db:
+    async with aiosqlite.connect("./chsuBot.db") as db:
         await db.execute(
             """CREATE TABLE IF NOT EXISTS groupId (
             groupName TEXT,

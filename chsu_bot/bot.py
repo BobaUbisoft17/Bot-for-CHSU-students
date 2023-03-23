@@ -257,6 +257,8 @@ async def get_td_tm_schedule(
     В ином случае запускает машину состояний и ждёт группу
     пользователя.
     """
+    if not await check_user_id(message.from_user.id):
+        await add_user_id(message.from_user.id)
     logger.info(f"{message.from_user.id} нажал на кнопку '{message.text}'")
     if await check_user_group(message.from_user.id):
         group_id = await get_user_group(message.from_user.id)
@@ -329,6 +331,8 @@ async def choice_another_day(
 
     Возвращает клавиатуру-календарь.
     """
+    if not await check_user_id(message.from_user.id):
+        await add_user_id(message.from_user.id)
     await state.set_state(Another_day.date)
     current_date = datetime.datetime.now()
     current_month = current_date.month
@@ -425,6 +429,8 @@ async def choose_group(message: types.Message, state: FSMContext) -> None:
 @dp.message_handler(TextFilter(equals="Выбрать диапазон"))
 async def choose_range(message: types.Message, state: FSMContext) -> None:
     """Переводит пользователя в меню выбора диапазона."""
+    if not await check_user_id(message.from_user.id):
+        await add_user_id(message.from_user.id)
     current_date = datetime.datetime.now()
     current_month = current_date.month
     current_year = current_date.year

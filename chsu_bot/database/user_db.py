@@ -8,7 +8,7 @@ from database.group_db import get_group_id
 
 async def check_user_id(user_id: int) -> bool:
     """Проверка пользователя на его наличие в БД."""
-    async with aiosqlite.connect("chsuBot.db") as db:
+    async with aiosqlite.connect("./chsuBot.db") as db:
         async with db.cursor() as cursor:
             await cursor.execute(
                 "SELECT * FROM users WHERE userId=?", [user_id]
@@ -21,7 +21,7 @@ async def check_user_id(user_id: int) -> bool:
 
 async def add_user_id(user_id: int, group_name: Optional[int] = 0) -> None:
     """Добавление id пользователя в БД."""
-    async with aiosqlite.connect("chsuBot.db") as db:
+    async with aiosqlite.connect("./chsuBot.db") as db:
         async with db.cursor() as cursor:
             await cursor.execute(
                 "INSERT INTO users (userId, groupId) VALUES (?, ?)",
@@ -32,7 +32,7 @@ async def add_user_id(user_id: int, group_name: Optional[int] = 0) -> None:
 
 async def delete_user_id(user_id: int) -> None:
     """Удаление пользователя из БД."""
-    async with aiosqlite.connect("chsuBot.db") as db:
+    async with aiosqlite.connect("./chsuBot.db") as db:
         async with db.cursor() as cursor:
             await cursor.execute(
                 "DELETE FROM users WHERE userId=?", [user_id]
@@ -42,7 +42,7 @@ async def delete_user_id(user_id: int) -> None:
 
 async def change_user_group(user_id: int, group: Optional[str] = None) -> None:
     """Смена группы пользователя в БД."""
-    async with aiosqlite.connect("chsuBot.db") as db:
+    async with aiosqlite.connect("./chsuBot.db") as db:
         async with db.cursor() as cursor:
             if group is None:
                 group_id = 0
@@ -56,7 +56,7 @@ async def change_user_group(user_id: int, group: Optional[str] = None) -> None:
 
 async def get_users_id() -> List[int]:
     """Получение id всех пользователей бота."""
-    async with aiosqlite.connect("chsuBot.db") as db:
+    async with aiosqlite.connect("./chsuBot.db") as db:
         async with db.cursor() as cursor:
             await cursor.execute(
                 "SELECT userId FROM users"
@@ -66,7 +66,7 @@ async def get_users_id() -> List[int]:
 
 async def check_user_group(user_id: int) -> bool:
     """Проверка наличия группы пользователя в БД."""
-    async with aiosqlite.connect("chsuBot.db") as db:
+    async with aiosqlite.connect("./chsuBot.db") as db:
         async with db.cursor() as cursor:
             await cursor.execute(
                 "SELECT groupId FROM users WHERE userId=?", [user_id]
@@ -79,7 +79,7 @@ async def check_user_group(user_id: int) -> bool:
 
 async def get_user_group(user_id: int) -> int:
     """Получение группы пользователя."""
-    async with aiosqlite.connect("chsuBot.db") as db:
+    async with aiosqlite.connect("./chsuBot.db") as db:
         async with db.cursor() as cursor:
             await cursor.execute(
                 "SELECT groupId FROM users WHERE userId=?", [user_id]
