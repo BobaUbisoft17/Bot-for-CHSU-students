@@ -6,6 +6,7 @@ import datetime
 from database.group_db import get_group_ids, update_group_schedule
 from logger import logger
 from parse import get_schedule
+from typing import Dict, Tuple
 
 
 async def update_schedule(waiting_time: int) -> None:
@@ -18,22 +19,23 @@ async def update_schedule(waiting_time: int) -> None:
         datetime.datetime.now() + datetime.timedelta(days=1)
     ).strftime("%d.%m.%Y")
     for i in range(0, len(group_ids), 60):
-        await asyncio.gather(
+        schedules = await asyncio.gather(
             *[
                 reload_group_schedule(group_id, today, tomorrow)
                 for group_id in group_ids[i : i + 60]
             ]
         )
+        await update_group_schedule(schedules)
         await asyncio.sleep(5)
     logger.info("Расписание успешно обнолвено")
 
 
 async def reload_group_schedule(
     group_id: int, today: str, tomorrow: str
-) -> None:
+) -> Tuple[str, Dict[str, str]]:
     """Парсинг json в расписание, и его отправка в БД."""
     schedules = await get_schedule(group_id, today, tomorrow)
-    await update_group_schedule(schedules, group_id)
+    return group_id, schedules
 
 
 async def loop_update_schedule() -> None:

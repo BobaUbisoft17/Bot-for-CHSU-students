@@ -22,15 +22,15 @@ async def add_groups_ids(ids_and_group_names: List[Tuple[int, str]]) -> None:
 
 
 async def update_group_schedule(
-    schedules: Dict[str, str], group_id: int
+    schedules: Tuple[str, Dict[str, str]]
 ) -> None:
     """Внесение расписания на два дня для переданной группы."""
-    td_schedule, tm_schedule = get_two_days_schedule(schedules)
+    schedules = [[*get_two_days_schedule(schedule), group_id] for group_id, schedule in schedules]
     async with aiosqlite.connect("./chsuBot.db") as db:
         async with db.cursor() as cursor:
-            await cursor.execute(
+            await cursor.executemany(
                 "UPDATE groupId SET td_schedule=?, tm_schedule=? WHERE id=?",
-                [td_schedule, tm_schedule, group_id],
+                schedules,
             )
         await db.commit()
 
