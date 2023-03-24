@@ -7,17 +7,39 @@ from utils import read_json
 
 
 URL = "http://api.chsu.ru/api/"
-HEADERS = {}
+HEADERS = {
+    "user-agent": "88005553535"
+}
 data = {
     "username": "mobil",
     "password": "ds3m#2nn"
 }
 
 
+async def check_token() -> None:
+    """Проверка валидности токена."""
+    try:
+        token = HEADERS["Authorization"]
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                url=URL + "auth/valid/",
+                headers=HEADERS,
+                data=token
+            ) as resp:
+                if await resp.text() == "false":
+                    await set_token()
+    except KeyError:
+        await set_token()
+
+
 async def set_token() -> None:
     """Получение и добавление токена в загаловки."""
     async with aiohttp.ClientSession() as session:
-        async with session.post(url=URL + "/auth/signin", json=data) as resp:
+        async with session.post(
+            url=URL + "auth/signin/",
+            headers=HEADERS,
+            json=data
+        ) as resp:
             HEADERS["Authorization"] = f'''Bearer {
                 (await resp.json())["data"]
             }'''
@@ -25,7 +47,7 @@ async def set_token() -> None:
 
 async def get_groups_ids() -> Dict[str, int]:
     """Получение списка всех групп."""
-    await set_token()
+    await check_token()
     async with aiohttp.ClientSession() as session:
         async with session.get(url=URL + "group/v1", headers=HEADERS) as resp:
             return await resp.json()
@@ -40,7 +62,7 @@ async def get_schedule(
         f"to/{end_date or start_date}/groupId/{group_id}/"
     )
     link = URL + body_request
-    await set_token()
+    await check_token()
     async with aiohttp.ClientSession() as session:
         async with session.get(url=link, headers=HEADERS) as resp:
             if (await resp.json()) == []:
