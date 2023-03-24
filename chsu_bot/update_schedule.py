@@ -2,11 +2,11 @@
 
 import asyncio
 import datetime
+from typing import Dict, Tuple
 
 from database.group_db import get_group_ids, update_group_schedule
 from logger import logger
 from parse import get_schedule
-from typing import Dict, Tuple
 
 
 async def update_schedule(waiting_time: int) -> None:

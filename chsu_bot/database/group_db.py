@@ -25,7 +25,10 @@ async def update_group_schedule(
     schedules: Tuple[str, Dict[str, str]]
 ) -> None:
     """Внесение расписания на два дня для переданной группы."""
-    schedules = [[*get_two_days_schedule(schedule), group_id] for group_id, schedule in schedules]
+    schedules = [
+        [*get_two_days_schedule(schedule), group_id]
+        for group_id, schedule in schedules
+    ]
     async with aiosqlite.connect("./chsuBot.db") as db:
         async with db.cursor() as cursor:
             await cursor.executemany(

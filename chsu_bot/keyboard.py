@@ -39,7 +39,6 @@ days = [
 ]
 
 
-
 empty_kb = ReplyKeyboardMarkup()
 
 
@@ -131,8 +130,7 @@ class ChoiceDateKeyboard(ReplyKeyboardMarkup):
                 KeyboardButton(text="Выбрать диапазон"),
             ],
             [KeyboardButton(text="Назад")],
-        ], 
-        resize_keyboard=True)
+        ], resize_keyboard=True)
 
 
 async def first_pt_groups() -> ReplyKeyboardMarkup:
