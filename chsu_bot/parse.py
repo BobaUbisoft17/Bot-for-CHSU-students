@@ -20,14 +20,14 @@ data = {
 async def check_token() -> None:
     """Проверка валидности токена."""
     try:
-        token = HEADERS["Authorization"]
+        token = HEADERS["Authorization"].split()[1]
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 url=URL + "auth/valid/",
                 headers=HEADERS,
                 data=token
             ) as resp:
-                if await resp.text() == "false":
+                if not await resp.json():
                     await set_token()
     except KeyError:
         await set_token()
