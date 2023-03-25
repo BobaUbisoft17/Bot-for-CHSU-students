@@ -3,6 +3,7 @@
 from typing import Dict, List, Optional
 
 import aiohttp
+from templtaes import SERVER_NOT_ANSWER
 from utils import read_json
 
 
@@ -65,6 +66,8 @@ async def get_schedule(
     await check_token()
     async with aiohttp.ClientSession() as session:
         async with session.get(url=link, headers=HEADERS) as resp:
+            if resp.status in [403, 404]:
+                return {"0": SERVER_NOT_ANSWER}
             if (await resp.json()) == []:
                 return {"0" : "Расписание не найдено"}
             return read_json(await resp.json())
