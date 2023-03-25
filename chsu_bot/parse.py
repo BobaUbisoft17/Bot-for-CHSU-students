@@ -1,6 +1,7 @@
 """Модуль для парсинга данных о расписании."""
 
 from typing import Dict, List, Optional
+import asyncio
 
 import aiohttp
 from templtaes import SERVER_NOT_ANSWER
@@ -11,6 +12,7 @@ URL = "http://api.chsu.ru/api/"
 HEADERS = {
     "user-agent": "88005553535"
 }
+TOKEN_HEADERS = HEADERS.copy()
 data = {
     "username": "mobil",
     "password": "ds3m#2nn"
@@ -24,11 +26,12 @@ async def check_token() -> None:
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 url=URL + "auth/valid/",
-                headers=HEADERS,
+                headers=TOKEN_HEADERS,
                 data=token
             ) as resp:
                 if not await resp.json():
                     await set_token()
+
     except KeyError:
         await set_token()
 
@@ -38,7 +41,7 @@ async def set_token() -> None:
     async with aiohttp.ClientSession() as session:
         async with session.post(
             url=URL + "auth/signin/",
-            headers=HEADERS,
+            headers=TOKEN_HEADERS,
             json=data
         ) as resp:
             HEADERS["Authorization"] = f'''Bearer {
