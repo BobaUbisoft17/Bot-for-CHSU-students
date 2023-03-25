@@ -299,8 +299,7 @@ async def get_group(message: types.Message, state: FSMContext) -> None:
         )
         logger.info(f"{message.from_user.id} вышел из состояния выбора группы")
     elif message.text in ["Дальше »", "« Обратно"]:
-        text, keyboard = await change_page(message)
-        await message.answer(text=text, reply_markup=keyboard)
+        await change_page(message)
     elif await check_group_name(message.text):
         group_id = await get_group_id(message.text)
         data = await state.get_data()
@@ -732,7 +731,7 @@ async def change_day(message: types.Message) -> None:
 
 async def change_page(
     message: types.Message,
-) -> Tuple[str, types.ReplyKeyboardMarkup]:
+) -> None:
     """Переход между клавиатурами для выбора группы."""
     if message.text == "Дальше »":
         await message.answer(
