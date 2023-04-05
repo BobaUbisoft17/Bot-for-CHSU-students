@@ -3,7 +3,7 @@
 import asyncio
 import datetime
 import os
-from typing import Tuple, Union
+from typing import Union
 
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -782,6 +782,10 @@ def loop() -> asyncio.AbstractEventLoop:
 @dp.errors_handler()
 async def handle_errors(update: types.Update, error: exceptions) -> bool:
     """Обработка неожиданных ошибок."""
+    await bot.send_message(
+        admin,
+        f"Произошла ошибка\n{error}"
+    )
     logger.exception("Произошла непредвиденная ошибка!")
     return True
 
