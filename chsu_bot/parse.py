@@ -1,7 +1,6 @@
 """Модуль для парсинга данных о расписании."""
 
 from typing import Dict, List, Optional
-import asyncio
 
 import aiohttp
 from templtaes import SERVER_NOT_ANSWER
