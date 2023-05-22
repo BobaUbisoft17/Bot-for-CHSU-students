@@ -1,19 +1,16 @@
 """Модуль для работы с Telegram."""
 
-import asyncio
 import datetime
 import os
 from typing import Union
 
-from aiogram import Bot, Dispatcher, executor, types
+from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import IDFilter, Text as TextFilter
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.utils import exceptions
-from database.create_database import create_table
 from database.group_db import (
-    add_groups_ids,
     check_group_name,
     get_group_id,
     get_td_schedule,
@@ -42,7 +39,7 @@ from keyboard import (
     SettingsKeyboard,
 )
 from logger import logger
-from parse import get_groups_ids, get_schedule
+from parse import get_schedule
 from templtaes import (
     ADMIN_GREETING,
     ALL_USERS_HAVE_BEEN_ANNOUNCED,
@@ -57,7 +54,6 @@ from templtaes import (
     USER_GREETING,
     WRONG_GROUP_NAME,
 )
-from update_schedule import loop_update_schedule, update_schedule
 from utils import build_schedule, valid_date, valid_range_length
 
 bot = Bot(token=os.getenv("BOTTOKEN"))
@@ -360,7 +356,7 @@ async def choose_another_day(
         if await check_user_group(callback.from_user.id):
             await state.finish()
             group_id = await get_user_group(callback.from_user.id)
-            await callback.message.delete()
+            await callback.message.edit_text("Вложение удалено")
             schedule = build_schedule(await get_schedule(group_id, start_day))[
                 0
             ]
@@ -376,7 +372,7 @@ async def choose_another_day(
         else:
             await state.update_data(date=start_day)
             await state.set_state(Another_day.group)
-            await callback.message.delete()
+            await callback.message.edit_text("Вложение удалено")
             await callback.message.answer(
                 text="Введите название вашей группы",
                 reply_markup=await first_pt_groups(),
@@ -385,7 +381,7 @@ async def choose_another_day(
     elif callback.data.split()[0] in ["next", "back"]:
         await change_month(callback)
     elif "menu" in callback.data:
-        await callback.message.delete()
+        await callback.message.edit_text("Вложение удалено")
         await state.finish()
         await callback.message.answer(
             text="Выберите на какую дату хотите получить расписание",
@@ -459,7 +455,7 @@ async def choose_start_day(
     elif callback.data.split()[0] in ["next", "back"]:
         await change_month(callback)
     elif "menu" in callback.data:
-        await callback.message.delete()
+        await callback.message.edit_text("Вложение удалено")
         await state.finish()
         await callback.message.answer(
             text="Выберите на какую дату хотите получить расписание",
@@ -478,7 +474,7 @@ async def choose_end_day(
     elif callback.data.split()[0] in ["back", "next"]:
         await change_month(callback)
     elif "menu" in callback.data:
-        await callback.message.delete()
+        await callback.message.edit_text("Вложение удалено")
         await state.finish()
         await callback.message.answer(
             text="Выберите на какую дату хотите получить расписание",
@@ -495,7 +491,7 @@ async def get_range_date(
     start_date = data["start_date"]
     end_date = callback.data.split()[1]
     if valid_range_length(start_date, end_date):
-        await callback.message.delete()
+        await callback.message.edit_text("Вложение удалено")
         if not valid_date(start_date, end_date):
             start_date, end_date = end_date, start_date
         if await check_user_group(callback.from_user.id):
@@ -774,11 +770,6 @@ async def send_range_schedule(
     )
 
 
-def loop() -> asyncio.AbstractEventLoop:
-    """Создаёт цикл."""
-    return asyncio.get_event_loop_policy().get_event_loop()
-
-
 @dp.errors_handler()
 async def handle_errors(update: types.Update, error: exceptions) -> bool:
     """Обработка неожиданных ошибок."""
@@ -788,16 +779,3 @@ async def handle_errors(update: types.Update, error: exceptions) -> bool:
     )
     logger.exception("Произошла непредвиденная ошибка!")
     return True
-
-
-@logger.catch
-def main() -> None:
-    """Запускает бота."""
-    logger.info("Запуск бота")
-    loop().run_until_complete(create_table())
-    resp = loop().run_until_complete(get_groups_ids())
-    loop().run_until_complete(add_groups_ids(resp))
-    loop().run_until_complete(update_schedule(0))
-    executor.start_polling(
-        dp, skip_updates=True, loop=loop().create_task(loop_update_schedule())
-    )

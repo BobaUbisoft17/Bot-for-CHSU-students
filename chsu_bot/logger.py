@@ -10,4 +10,5 @@ logger.add(
     rotation="1 week",
     compression="zip",
     backtrace=False,
+    enqueue=True,
 )

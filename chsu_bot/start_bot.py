@@ -1,5 +1,14 @@
 """Модуль для запуска бота."""
+import os
 
-from bot import main
+import uvicorn
+from webhook import app
 
-main()
+
+HOST = os.getenv("HOST")
+PORT = int(os.getenv("PORT"))
+uvicorn.run(
+    app=app,
+    host=HOST,
+    port=PORT,
+)
