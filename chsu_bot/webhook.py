@@ -1,54 +1,68 @@
 """Модуль для настройки webhook."""
 
 import asyncio
-import os
 
-from aiogram import Bot, Dispatcher, types
-from bot import bot, dp
-from database.create_database import create_table
-from database.group_db import add_groups_ids
+import aiogram
+from aiogram import types
 from fastapi import FastAPI
 from logger import logger
-from parse import get_groups_ids
-from update_schedule import loop_update_schedule, update_schedule
+import uvicorn
 
 
-WEBHOOK_HOST = f"{os.getenv('DOMEN')}"
-WEBHOOK_PATH = f"/bot/{os.getenv('BOTTOKEN')}"
-WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
+class Webhook:
+    """Класс для управления вебхуком."""
 
-Dispatcher.set_current(dp)
-Bot.set_current(bot)
+    def __init__(
+        self,
+        dp: aiogram.Dispatcher,
+        bot: aiogram.Bot,
+        tasks: list,
+        webhook_path: str,
+        webhook_host: str,
+        host: str,
+        port: int,
+    ) -> None:
+        self.app = FastAPI()
+        self.webhook_host = webhook_host
+        self.webhook_path = webhook_path
+        self.webhook_url = self.webhook_host + self.webhook_path
+        self.host = host
+        self.port = port
+        self.dp = dp
+        self.bot = bot
+        self.tasks = tasks
 
-app = FastAPI()
+        self.app.add_event_handler("startup", self.on_startup)
+        self.app.add_event_handler("shutdown", self.on_shutdown)
 
-
-@app.on_event("startup")
-async def on_startup() -> None:
-    """Задачи, выполняющиеся перед запуском приложения."""
-    webhook_info = await bot.get_webhook_info()
-    if webhook_info.url != WEBHOOK_URL:
-        await bot.set_webhook(
-            url=WEBHOOK_URL
+        self.app.add_api_route(
+            self.webhook_url, endpoint=self.start_webhook, methods=["POST"]
         )
-    logger.info("Запуск бота")
-    await create_table()
-    resp = await get_groups_ids()
-    await add_groups_ids(resp)
-    await update_schedule(0)
-    asyncio.create_task(loop_update_schedule())
 
+    async def on_startup(self) -> None:
+        """Задачи, выполняющиеся перед запуском приложения."""
+        webhook_info = await self.bot.get_webhook_info()
+        if webhook_info.url != self.webhook_url:
+            await self.bot.set_webhook(url=self.webhook_url)
+        for task in self.tasks:
+            asyncio.create_task(task)
 
-@app.post(WEBHOOK_PATH)
-@logger.catch
-async def bot_webhook(update: dict) -> None:
-    """Передача события обработчикам."""
-    telegram_update = types.Update(**update)
-    await dp.process_update(telegram_update)
+        logger.info("Запуск бота")
 
+    async def on_shutdown(self) -> None:
+        """Задачи, выполняющиеся перед выключением приложения."""
+        logger.info("Бот завершил работу")
+        await self.bot.get_session()
 
-@app.on_event("shutdown")
-async def on_shutdown() -> None:
-    """Задачи, выполняющиеся перед выключением приложения."""
-    logger.info("Бот завершил работу")
-    await bot.get_session()
+    async def start_webhook(self, update: dict) -> None:
+        """Передача события обработчикам."""
+        telegram_update = types.Update(**update)
+        await self.dp.process_update(telegram_update)
+
+    def run(self) -> None:
+        """Запуск локального сервера."""
+        uvicorn.run(
+            app=self.app,
+            host=self.host,
+            port=self.port,
+        )

@@ -1,0 +1,31 @@
+version: '3.8'
+services:
+  bot:
+      build: 
+        context: .
+      restart: 
+        on-failure
+      environment:
+        TZ: Europe/Moscow
+      depends_on:
+        - nginx
+
+  nginx:
+      image: nginx:1.25.2-alpine-slim
+      restart: always
+      ports:
+        - '80:80'
+        - '443:443'
+      volumes:
+        - /var/www/html/:/var/www/html/:ro
+        - /etc/letsencrypt/:/etc/certs/:ro
+        - ./conf.d/:/etc/nginx/conf.d/:ro
+      depends_on: 
+        - certbot
+  
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - /etc/letsencrypt/:/etc/certs/
+      - /var/www/html/:/var/www/html/
+    command: certonly --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email -d ${DOMEN} --staging
