@@ -1,5 +1,7 @@
 """Модуль запуска бота с помощью поллингом."""
 
+import asyncio
+
 from aiogram import Dispatcher
 
 
@@ -12,4 +14,6 @@ class Polling:
 
     async def run(self) -> None:
         """Запуск бота."""
+        for task in self.tasks:
+            asyncio.create_task(task)
         await self.dp.start_polling(fast=True)
