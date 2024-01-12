@@ -6,6 +6,13 @@ services:
       restart: 
         on-failure
       environment:
+        ADMIN: ${ADMIN}
+        BOTTOKEN: ${BOTTOKEN}
+        DBURL: ${DBURL-bot.db}
+        RUNTYPE: ${RUNTYPE-polling}
+        DOMEN: ${DOMEN-127.0.0.1}
+        HOST: ${HOST-localhost}
+        PORT: ${PORT-8080}
         TZ: Europe/Moscow
       depends_on:
         - nginx
