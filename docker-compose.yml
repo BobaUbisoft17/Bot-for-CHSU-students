@@ -15,19 +15,6 @@ services:
         PORT: ${PORT-8080}
         TZ: Europe/Moscow
       depends_on:
-        - nginx
-
-  nginx:
-      image: nginx:1.25.2-alpine-slim
-      restart: always
-      ports:
-        - '80:80'
-        - '443:443'
-      volumes:
-        - /var/www/html/:/var/www/html/:ro
-        - /etc/letsencrypt/:/etc/certs/:ro
-        - ./conf.d/:/etc/nginx/conf.d/:ro
-      depends_on: 
         - certbot
   
   certbot:
