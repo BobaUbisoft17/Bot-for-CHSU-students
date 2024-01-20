@@ -54,7 +54,7 @@ server_name {Домен сервера/IP} => server_name example.com
 ### Запуск
 
 #### Webhook
-Необходимо первым запуском получить сертификат letsencrypt
+Необходимо первым запуском получить сертификат letsencrypt(в режиме отладки добавьте флаг --staging к установленной команде в контейнере certbot в [файле](https://github.com/BobaUbisoft17/Bot-for-CHSU-students/blob/main/docker-compose-webhook.yml))
 
 ~~~shell
 docker-compose -f docker-compose-webhook.yml up --build
