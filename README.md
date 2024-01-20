@@ -41,11 +41,11 @@ git clone https://github.com/BobaUbisoft17/Bot-for-CHSU-students
 
 ### Добавление переменных среды
 
-Необходимо создать файл .env, затем внести переменные среды([пример](https://github.com/BobaUbisoft17/Bot-for-CHSU-students/env.sample))
+Необходимо создать файл .env, затем внести переменные среды([пример](https://github.com/BobaUbisoft17/Bot-for-CHSU-students/blob/main/env.sample))
 
 ### Конфигурация Nginx(если запуск производится на webhook)
 
-Необходимо [файле конфигурации nginx](https://github.com/BobaUbisoft17/Bot-for-CHSU-students/nginx-conf.d/app.conf) добавить доменное имя вашего сервера
+Необходимо [файле конфигурации nginx](https://github.com/BobaUbisoft17/Bot-for-CHSU-students/blob/main/nginx-conf.d/app.conf) добавить доменное имя вашего сервера
 
 ~~~shell
 server_name {Домен сервера/IP} => server_name example.com
@@ -60,7 +60,7 @@ server_name {Домен сервера/IP} => server_name example.com
 docker-compose -f docker-compose-webhook.yml up --build
 ~~~
 
-После получения сертификата нужно остановить контейнеры и зайти в [файл конфигурации nginx](https://github.com/BobaUbisoft17/Bot-for-CHSU-students/nginx-conf.d/app.conf) и убрать все # этом файле. После выполнить команду
+После получения сертификата нужно остановить контейнеры и зайти в [файл конфигурации nginx](https://github.com/BobaUbisoft17/Bot-for-CHSU-students/blob/main/nginx-conf.d/app.conf) и убрать все # этом файле. После выполнить команду
 
 ~~~shell
 docker-compose -f docker-compose-webhook.yml up --build
