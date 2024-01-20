@@ -1,54 +1,73 @@
 """Модуль для настройки webhook."""
 
 import asyncio
-import os
 
-from aiogram import Bot, Dispatcher, types
-from bot import bot, dp
-from database.create_database import create_table
-from database.group_db import add_groups_ids
-from fastapi import FastAPI
-from logger import logger
-from parse import get_groups_ids
-from update_schedule import loop_update_schedule, update_schedule
+import aiogram
+from aiogram.dispatcher.webhook import get_new_configured_app
+from aiohttp import web
 
 
-WEBHOOK_HOST = f"{os.getenv('DOMEN')}"
-WEBHOOK_PATH = f"/bot/{os.getenv('BOTTOKEN')}"
-WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
+class Webhook:
+    """Класс для управления вебхуком."""
 
-Dispatcher.set_current(dp)
-Bot.set_current(bot)
+    def __init__(
+        self,
+        dp: aiogram.Dispatcher,
+        bot: aiogram.Bot,
+        webhook_path: str,
+        webhook_host: str,
+        host: str,
+        port: int,
+        tasks: list = None,
+    ) -> None:
+        self.WEBHOOK_URL = f"https://{webhook_host}:443{webhook_path}"
+        self.WEBHOOK_PATH = webhook_path
+        self.APP_HOST = host
+        self.APP_PORT = port
+        self.dp = dp
+        self.bot = bot
+        self.tasks = tasks
 
-app = FastAPI()
+    async def on_startup(self, app: web.Application) -> None:
+        """Установка вебхука."""
+        webhook = await self.bot.get_webhook_info()
 
+        if webhook.url != self.WEBHOOK_URL:
+            if not webhook.url:
+                await self.bot.delete_webhook()
 
-@app.on_event("startup")
-async def on_startup() -> None:
-    """Задачи, выполняющиеся перед запуском приложения."""
-    webhook_info = await bot.get_webhook_info()
-    if webhook_info.url != WEBHOOK_URL:
-        await bot.set_webhook(
-            url=WEBHOOK_URL
+            await self.bot.set_webhook(self.WEBHOOK_URL)
+
+    async def on_shutdown(self, app: web.Application) -> None:
+        """Удаление вебхука перед завершением работы приложения."""
+        await self.bot.delete_webhook()
+
+        await self.dp.storage.close()
+        await self.dp.storage.wait_closed()
+
+    async def run(self) -> None:
+        """Запуск приложения."""
+        # Получение настроенного aiogram приложения
+        app = get_new_configured_app(self.dp, self.WEBHOOK_PATH)
+
+        app.on_startup.append(self.on_startup)
+        app.on_shutdown.append(self.on_shutdown)
+
+        loop = asyncio.get_event_loop()
+
+        # Добавление задач в цикл
+        for task in self.tasks:
+            loop.create_task(task)
+
+        # асинхронный запуск aiohttp-сервера
+        # способ используется под капотом web.run_app
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(
+            runner=runner,
+            host=self.APP_HOST,
+            port=self.APP_PORT,
         )
-    logger.info("Запуск бота")
-    await create_table()
-    resp = await get_groups_ids()
-    await add_groups_ids(resp)
-    await update_schedule(0)
-    asyncio.create_task(loop_update_schedule())
-
-
-@app.post(WEBHOOK_PATH)
-@logger.catch
-async def bot_webhook(update: dict) -> None:
-    """Передача события обработчикам."""
-    telegram_update = types.Update(**update)
-    await dp.process_update(telegram_update)
-
-
-@app.on_event("shutdown")
-async def on_shutdown() -> None:
-    """Задачи, выполняющиеся перед выключением приложения."""
-    logger.info("Бот завершил работу")
-    await bot.get_session()
+        await site.start()
+        while True:
+            await asyncio.sleep(3600)

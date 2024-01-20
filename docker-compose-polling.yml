@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  bot:
+      build: 
+        context: .
+      restart: 
+        on-failure
+      environment:
+        ADMIN: ${ADMIN}
+        BOTTOKEN: ${BOTTOKEN}
+        DBURL: ${DBURL-bot.db}
+        RUNTYPE: polling
+        TZ: Europe/Moscow
